@@ -4,24 +4,23 @@ mod ecdsa_api;
 mod types;
 
 use ic_cdk::{api::management_canister::bitcoin::{
-    BitcoinNetwork, GetUtxosResponse, MillisatoshiPerByte,
+    BitcoinNetwork, GetUtxosResponse, MillisatoshiPerByte, Utxo,
 }, query};
 use ic_cdk_macros::{init, post_upgrade, pre_upgrade, update};
 use types::SendRequest;
 use std::cell::{Cell, RefCell};
 
 use candid::Principal;
-use ic_ckbtc_minter_syron::{
+use ic_ckbtc_minter_tyron::{
     lifecycle::{
         self,
         init::MinterArg
     },
-    management::get_exchange_rate,
     state::{eventlog::Event, read_state},
     storage::record_event,
     tasks::{schedule_now, TaskType},
     updates::{
-        self, get_btc_address::GetBtcAddressArgs, get_withdrawal_account::compute_subaccount, update_balance::{UpdateBalanceArgs, UpdateBalanceError, UtxoStatus}
+        self, get_btc_address::{GetBoxAddressArgs, GetBtcAddressArgs}, get_withdrawal_account::compute_subaccount, update_balance::{UpdateBalanceArgs, UpdateBalanceError, UtxoStatus}
     },
     MinterInfo
 };
@@ -136,19 +135,35 @@ pub async fn send(request: types::SendRequest) -> String {
 
 /// 2. Using P2WPKH
 #[update]
-pub async fn transfer(request: types::SendRequest) -> String {
+pub async fn mint(address: String, txid: String) -> String {
     let derivation_path = DERIVATION_PATH.with(|d| d.clone());
     let network = NETWORK.with(|n| n.get());
     let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
-    let tx_id = bitcoin_wallet::send_p2wpkh(
+    let tx_id = bitcoin_wallet::mint_p2wpkh(
         network,
         derivation_path,
         key_name,
-        request.destination_address,
-        request.amount_in_satoshi,
+        address,
+        txid,
     )
     .await;
-    let res = std::str::from_utf8(&tx_id).unwrap().to_string();
+
+    let txid_bytes = tx_id.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
+    let txid_hex = hex::encode(txid_bytes);
+    txid_hex
+}
+
+#[update]
+pub async fn test() -> Vec<String> {
+    let derivation_path = DERIVATION_PATH.with(|d| d.clone());
+    let network = NETWORK.with(|n| n.get());
+    let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
+    let res = bitcoin_wallet::test_utxos(
+        network,
+        derivation_path,
+        key_name,
+    )
+    .await;
     res
 }
 
@@ -184,9 +199,9 @@ fn check_postcondition<T>(t: T) -> T {
 }
 
 #[update]
-async fn get_btc_address(args: GetBtcAddressArgs) -> String {
+async fn get_box_address(args: GetBoxAddressArgs) -> String {
     // check_anonymous_caller();
-    updates::get_btc_address::get_btc_address(args).await
+    updates::get_btc_address::get_box_address(args).await
 }
 
 #[update]
@@ -196,20 +211,41 @@ async fn update_balance(args: UpdateBalanceArgs) -> Result<Vec<UtxoStatus>, Upda
 }
 
 #[update]
-async fn get_susd(args: UpdateBalanceArgs) -> String {
-    let destination_address = (&args.ssi).to_string();
+async fn get_susd(args: UpdateBalanceArgs, txid: String) -> String {
+    let address = (&args.ssi).to_string();
 
-    // @dev 1. Update Balance (the user's Vault MUST have BTC deposit confirmed)
+    // @dev 1. Update Balance (the user's $Box MUST have BTC deposit confirmed)
     let _ = check_postcondition(updates::update_balance::update_balance(args).await);
     
-    let req = SendRequest{
-        destination_address,
-        amount_in_satoshi: 546
-    };
-
     // @dev 2. Transfer stablecoin from minter to user address
-    let tx_id = transfer(req).await;
+    let tx_id = mint(address, txid).await;
     tx_id
+}
+
+#[update]
+async fn update_ssi(args: UpdateBalanceArgs) -> String {
+    let address = (&args.ssi).to_string();
+
+    // @dev 1. Update Balance (the user's $Box MUST have BTC deposit confirmed)
+    let _ = check_postcondition(updates::update_balance::update_balance(args).await);
+    
+    // @dev 2. Transfer stablecoin from minter to user address
+
+    let derivation_path = DERIVATION_PATH.with(|d| d.clone());
+    let network = NETWORK.with(|n| n.get());
+    let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
+    let tx_id = bitcoin_wallet::send_p2wpkh(
+        network,
+        derivation_path,
+        key_name,
+        address,
+        546,
+    )
+    .await;
+
+    let txid_bytes = tx_id.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
+    let txid_hex = hex::encode(txid_bytes);
+    txid_hex
 }
 
 #[update]
@@ -217,16 +253,16 @@ async fn get_subaccount(ssi: String) -> Subaccount {
     compute_subaccount(1, &ssi)
 }
 
-#[update]
-async fn get_xr() -> u64 {
-    let xr = match get_exchange_rate().await {
-        Ok(result) => result,
-        Err(_err) => {
-           return 0
-        }
-    };
-    xr.unwrap().rate
-}
+// #[update]
+// async fn get_xr() -> u64 {
+//     let xr = match get_exchange_rate().await {
+//         Ok(result) => result,
+//         Err(_err) => {
+//            return 0
+//         }
+//     };
+//     xr.unwrap().rate
+// }
 
 #[query]
 fn get_minter_info() -> MinterInfo {

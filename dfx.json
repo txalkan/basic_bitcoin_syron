@@ -11,11 +11,11 @@
       "candid": "src/ledger/icrc1_ledger.did",
       "wasm": "src/ledger/ic-icrc1-ledger.wasm.gz"
     },
-    "basic_bitcoin_syron": {
+    "basic_bitcoin_tyron": {
       "type": "custom",
-      "package": "basic_bitcoin_syron",
-      "candid": "src/basic_bitcoin/basic_bitcoin.did",
-      "wasm": "target/wasm32-unknown-unknown/release/basic_bitcoin_syron.wasm",
+      "package": "basic_bitcoin_tyron",
+      "candid": "src/basic_bitcoin/basic_bitcoin_tyron.did",
+      "wasm": "target/wasm32-unknown-unknown/release/basic_bitcoin_tyron.wasm",
       "build": "src/basic_bitcoin/build.sh",
       "metadata": [
         {

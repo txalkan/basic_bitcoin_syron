@@ -1,10 +1,10 @@
 [package]
-name = "basic_bitcoin_syron"
+name = "basic_bitcoin_tyron"
 version = "0.1.0"
 edition = "2018"
-authors = ["Xalkan Duarte <xalkan@pm.me>"]
-description = "Syron is a decentralized finance (DeFi) project centered on Bitcoin, focused on developing the Syron U$ Dollar (SU$D), an overcollateralized stablecoin pegged to the U.S. dollar. Powered by the Internet Computer, Syron aims to provide users with seamless access to USD liquidity while leveraging the security and decentralization of Bitcoin."
-documentation = "https://syron.ssiprotocol.com"
+authors = ["Xalkan Duarte <xalkan@tyron.io>"]
+description = "Tyron is a decentralized finance (DeFi) project focused on developing the Syron U$ Dollar (SU$D), an overcollateralized stablecoin pegged to the U.S. dollar and backed by BTC. Powered by the Internet Computer, Syron aims to provide users with seamless access to USD liquidity while leveraging the security and decentralization of Bitcoin."
+documentation = "https://docs.tyron.io"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,14 +15,15 @@ crate-type = ["cdylib"]
 hex = "0.4.3"
 bitcoin = "0.28.1"
 bs58 = "0.4.0"
-candid = { version = "0.10.3" }
+candid = { version = "0.10.7" }
 ic-cdk = "0.12.0"
 ic-cdk-macros = "0.8.3"
 ripemd = "0.1.1"
 serde = "1.0.132"
 sha2 = "0.10.2"
-ic-ckbtc-minter-syron = { git = "https://github.com/txalkan/ic", rev = "efd042729aede65e0e4110eac018e6234c54e5a4" }
-icrc-ledger-types = { git = "https://github.com/txalkan/ic", rev = "efd042729aede65e0e4110eac018e6234c54e5a4" }
-ic-ic00-types = { git = "https://github.com/txalkan/ic", rev = "efd042729aede65e0e4110eac018e6234c54e5a4" }
-ic-btc-interface = { git = "https://github.com/dfinity/bitcoin-canister", rev = "d2bff8aa0c2aa9485d839f5ee11e829df5666479" }
+ic-ckbtc-minter-tyron = { git = "https://github.com/txalkan/ic", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
+icrc-ledger-types = { git = "https://github.com/txalkan/ic", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
+ic-management-canister-types = { git = "https://github.com/txalkan/ic", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
+ic-btc-interface = { git = "https://github.com/dfinity/bitcoin-canister", rev = "62a71e47c491fb842ccc257b1c675651501f4b82" }
 serde_bytes = "0.11"
+ic-canister-log = { git = "https://github.com/txalkan/ic", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }

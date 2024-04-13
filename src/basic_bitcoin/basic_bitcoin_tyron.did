@@ -197,11 +197,7 @@ service : (network, MinterArg) -> {
 
     // Returns the bitcoin address to which the user should send BTC
     // to get SU$D using the [update_balance] endpoint.
-    //
-    // If the owner is not set, it defaults to the caller's principal.
-    "get_btc_address": (record {
-      /*owner: opt principal;
-      subaccount : opt blob;*/
+    "get_box_address": (record {
       ssi: bitcoin_address
     }) -> (bitcoin_address);
 
@@ -214,10 +210,14 @@ service : (network, MinterArg) -> {
     // * A BTC deposit was made to the bitcoin_address of the SSI Vault, which the
     //   [get_btc_address] endpoint returns.
     "update_balance" : (record { owner: opt principal; subaccount : opt blob; ssi: text }) -> (variant { Ok: vec UtxoStatus; Err: UpdateBalanceError });
-    "get_susd" : (record { ssi: text }) -> (text);
+    
+    "get_susd" : (record { ssi: text }, txid: text) -> (text);
+
+    "update_ssi" : (record { ssi: text }) -> (text);
     
     "get_subaccount": ( ssi: bitcoin_address ) -> (blob);
-    "get_xr": () -> (nat64);
 
     "get_minter_info": () -> (MinterInfo) query;
+
+    "test" : () -> ( vec text);
 }
