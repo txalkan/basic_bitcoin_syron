@@ -2,26 +2,28 @@
 
 == Overview
 
-This Proof of Concept (PoC) is a work in progress. Once completed, it'll walk you through deploying a sample Self-Sovereign Identity (SSI) Vault to get Syron U$ dollars (SU$D) on Bitcoin. Syron is a Bitcoin-native stablecoin based on the Ordinals protocol that smoothly integrates with the Internet Computer at the protocol level to offer access to USD liquidity and Decentralized Finance (DeFi) on the Bitcoin mainnet. Leveraging the https://internetcomputer.org/docs/current/references/samples/rust/basic_bitcoin/[Basic Bitcoin] foundation for the PoC, Syron ensures a smooth transition for this implementation.
+This Proof of Concept (PoC) is a work in progress. Once completed, it'll walk you through deploying Tyron's stablecoin metaprotocol to withdraw Syron U$ dollars (SU$D) on Bitcoin. Syron is a Bitcoin-native stablecoin based on the Ordinals protocol that smoothly integrates with the Internet Computer at the protocol level to offer access to USD liquidity and Decentralized Finance (DeFi) on Bitcoin Layer 1. Leveraging the https://internetcomputer.org/docs/current/references/samples/rust/basic_bitcoin/[Basic Bitcoin] foundation for the PoC, Syron ensures a smooth transition for this implementation.
 
-Explore the https://syron.ssiprotocol.com[Syron documentation] for more comprehensive insights.
+Explore the https://docs.tyron.io[documentation] for more comprehensive insights.
 
 == Architecture
 
-image::public/images/syron_get_susd.png[]
+image::public/images/syron_minting.png[]
 
 The architecture of Syron includes:
 
-- **Syron U$ Dollar (SU$D)**: A stablecoin pegged to USD, minted by over-collateralizing Bitcoin in SSI Vaults.
-- **SSI Vaults**: Hold BTC collateral and manage SU$D minting/burning.
-- **Integration with Bitcoin**: Utilizes ICP for seamless integration with Bitcoin network, enabling verification of BTC collateral and transaction management.
-- **Internet Computer Protocol (ICP)**: Facilitates smart contract execution and interoperability.
-- **ckBTC and Elliptic DAO Protocol**: Foundation providing open-source software and reusable features.
-- **Juno Integration**: Enhances user experience with user-controlled SSI Vaults. See https://ssibrowser.com[SSI Browser].
-
-image::public/images/syron_mint_susd.png[]
+- **Syron U$ Dollar (SU$D)**: A stablecoin pegged to USD, minted by over-collateralizing Bitcoin in safety deposit boxes.
+- **Safety Deposit ₿ox**: Hold BTC collateral and manage SU$D operations.
+- **Internet Computer Protocol (ICP)**: Facilitates smart contract execution and interoperability. The Internet Computer provides the foundation in terms of open-source software and reusable components, such as ckBTC and the Exchange Rate Canister.
+- **Integration with Bitcoin**: Utilizes ICP for seamless integration with the Bitcoin network, enabling verification of BTC collateral and transaction management using chain-key cryptography.
 
 This architecture ensures easy access to USD liquidity while retaining BTC ownership, fostering a permissionless system with enhanced security and interoperability within the Bitcoin DeFi ecosystem.
+
+== Bitcoin Testnet
+
+Explore Tyron's open-source web application to interact with the Bitcoin testnet:
+
+https://testnet.tyron.io[testnet.tyron.io]
 
 == Prerequisites
 
@@ -38,40 +40,6 @@ To verify the installation, run:
 ----
 dfx -V
 ----
-
-== Bitcoin Testnet with the Internet Computer
-
-----
-export NET=ic
-----
-
-=== Self-Sovereign Identity Vault
-
-1) Save your BTC testnet address:
-
-----
-export SSI=<your_btc_address>
-----
-
-2) Obtain the deposit address for your SSI Vault with the following command:
-
-----
-make vault
-----
-
-image::public/images/syron_make_vault.png[]
-
-3) Send BTC to your vault's deposit address using a wallet like Xverse. Wait until the transaction is confirmed.
-
-4) Mint Syron U$D:
-
-----
-make susd
-----
-
-The command above returns the UTXOs considered for minting SU$D.
-
-image::public/images/syron_make_susd.png[]
 
 == Local Deployment
 
@@ -157,7 +125,7 @@ Finally, deploy the Syron minter using:
 cd ../.. && make deploy
 ----
 
-=== SSI Vault
+=== Safety Deposit ₿ox
 
 1) Save your BTC testnet address:
 
@@ -165,28 +133,19 @@ cd ../.. && make deploy
 export SSI=<your_btc_address>
 ----
 
-2) Obtain the deposit address for your SSI Vault with the following command:
+2) Obtain the address of your SD₿ with the following command:
 
 ----
-make vault
+make box
 ----
 
-image::public/images/syron_make_vault.png[]
+image::public/images/syron_make_box.png[]
 
-3) Send BTC to your vault's deposit address.
+3) Deposit BTC into your Safety Deposit ₿ox
 
 You can mine blocks to earn bitcoin. Go to your Bitcoin Core repo and run the following command to mine 1 block:
 
 ----
-./bin/bitcoin-cli -conf=$(pwd)/bitcoin.conf generatetoaddress 1 <your_vault_address>
+./bin/bitcoin-cli -conf=$(pwd)/bitcoin.conf generatetoaddress 1 <your_box_address>
 ----
 
-4) Mint Syron U$D:
-
-----
-make susd
-----
-
-image::public/images/syron_make_susd.png[]
-
-The command above returns the UTXOs considered for minting SU$D.
