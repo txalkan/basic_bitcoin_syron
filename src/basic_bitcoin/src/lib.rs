@@ -20,7 +20,7 @@ use ic_ckbtc_minter_tyron::{
     storage::record_event,
     tasks::{schedule_now, TaskType},
     updates::{
-        self, get_btc_address::{GetBoxAddressArgs, GetBtcAddressArgs}, get_withdrawal_account::compute_subaccount, update_balance::{UpdateBalanceArgs, UpdateBalanceError, UtxoStatus}
+        self, get_btc_address::GetBoxAddressArgs, get_withdrawal_account::compute_subaccount, update_balance::{UpdateBalanceError, UtxoStatus}
     },
     MinterInfo
 };
@@ -205,17 +205,17 @@ async fn get_box_address(args: GetBoxAddressArgs) -> String {
 }
 
 #[update]
-async fn update_balance(args: UpdateBalanceArgs) -> Result<Vec<UtxoStatus>, UpdateBalanceError> {
+async fn update_ssi_balance(args: GetBoxAddressArgs) -> Result<Vec<UtxoStatus>, UpdateBalanceError> {
     // check_anonymous_caller();
-    check_postcondition(updates::update_balance::update_balance(args).await)
+    check_postcondition(updates::update_balance::update_ssi_balance(args).await)
 }
 
 #[update]
-async fn get_susd(args: UpdateBalanceArgs, txid: String) -> String {
+async fn get_susd(args: GetBoxAddressArgs, txid: String) -> String {
     let address = (&args.ssi).to_string();
 
     // @dev 1. Update Balance (the user's $Box MUST have BTC deposit confirmed)
-    let _ = check_postcondition(updates::update_balance::update_balance(args).await);
+    let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
     
     // @dev 2. Transfer stablecoin from minter to user address
     let tx_id = mint(address, txid).await;
@@ -223,13 +223,13 @@ async fn get_susd(args: UpdateBalanceArgs, txid: String) -> String {
 }
 
 #[update]
-async fn update_ssi(args: UpdateBalanceArgs) -> String {
+async fn update_ssi(args: GetBoxAddressArgs) -> String {
     let address = (&args.ssi).to_string();
 
     // @dev 1. Update Balance (the user's $Box MUST have BTC deposit confirmed)
-    let _ = check_postcondition(updates::update_balance::update_balance(args).await);
+    let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
     
-    // @dev 2. Transfer stablecoin from minter to user address
+    // @dev 2. Transfer stablecoin from minter to the user's wallet
 
     let derivation_path = DERIVATION_PATH.with(|d| d.clone());
     let network = NETWORK.with(|n| n.get());
@@ -248,9 +248,9 @@ async fn update_ssi(args: UpdateBalanceArgs) -> String {
     txid_hex
 }
 
-#[update]
-async fn get_subaccount(ssi: String) -> Subaccount {
-    compute_subaccount(1, &ssi)
+#[query]
+async fn get_subaccount(nonce: u64, ssi: String) -> Subaccount {
+    compute_subaccount(nonce, &ssi)
 }
 
 // #[update]

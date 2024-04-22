@@ -150,16 +150,17 @@ pub async fn mint_p2wpkh(
     txid: String,
 ) -> [u8;32] {
     // Get fee percentiles from previous transactions to estimate our own fee.
-    let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
+    // let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
 
-    let fee_per_byte = 1000; // 1 satoshi per byte @review (mainnet)
+    // @dev Gas in satoshis per byte @review (mainnet)
+    let fee_per_byte = 50000;
     // if fee_percentiles.is_empty() {
-    //     // There are no fee percentiles. This case can only happen on a regtest
-    //     // network where there are no non-coinbase transactions. In this case,
-    //     // we use a default of 2000 millisatoshis/byte (i.e. 2 satoshi/byte)
-    //     2000
+        // There are no fee percentiles. This case can only happen on a regtest
+        // network where there are no non-coinbase transactions. In this case,
+        // we use a default of 20000 millisatoshis/byte (i.e. 20 satoshi/byte)
+    //     20000
     // } else {
-    //     // Choose the 50th percentile for sending fees.
+        // Choose the 50th percentile for sending fees.
     //     fee_percentiles[50]
     // };
 
@@ -180,14 +181,15 @@ pub async fn mint_p2wpkh(
     // Note that pagination may have to be used to get all UTXOs for the given address.
     // For the sake of simplicity, it is assumed here that the `utxo` field in the response
     // contains all UTXOs.
-    let own_utxos: Vec<ic_btc_interface::Utxo> =
-        // bitcoin_api::get_utxos(btc_network, own_address.clone())
-        // .await
-        // .utxos;
-
-        get_utxos(network, &own_address, 0, CallSource::Client) // @review (mainnet) min confirmations
+    let own_utxos: Vec<Utxo> =
+        bitcoin_api::get_utxos(btc_network, own_address.clone())
         .await
-        .unwrap().utxos;
+        .utxos;
+
+    // let own_utxos: Vec<ic_btc_interface::Utxo> =
+        // get_utxos(network, &own_address, 1, CallSource::Client) // @review (mainnet) min confirmations
+        // .await
+        // .unwrap().utxos;
 
     // for utxo in &own_utxos {
     //     log!(
@@ -201,27 +203,27 @@ pub async fn mint_p2wpkh(
     let mut fee_utxos = own_utxos.clone();
 
     for (index, utxo) in own_utxos.iter().enumerate() {
-        let outpoint = Outpoint {
-            txid: utxo.outpoint.txid.as_ref().to_vec(),
-            vout: utxo.outpoint.vout
-        };
+        // let outpoint = Outpoint {
+        //     txid: utxo.outpoint.txid.as_ref().to_vec(),
+        //     vout: utxo.outpoint.vout
+        // };
 
         log!(
             P1,
             "Minter UTXO: {}",
-            DisplayOutpoint(&outpoint)
+            DisplayOutpoint(&utxo.outpoint)
         );
 
-        let txid_bytes = outpoint.txid.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
+        let txid_bytes = utxo.outpoint.txid.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
         let txid_hex = hex::encode(txid_bytes);
 
         if txid_hex == txid {
-            let ssi_utxo = Utxo {
-                outpoint,
-                value: utxo.value,
-                height: utxo.height
-            };
-            option_utxo = Some(ssi_utxo);
+            // let ssi_utxo = Utxo {
+            //     outpoint,
+            //     value: utxo.value,
+            //     height: utxo.height
+            // };
+            option_utxo = Some(/*ssi_*/utxo.clone());
             fee_utxos.remove(index);
             break
         }
@@ -270,16 +272,16 @@ pub async fn send_p2wpkh(
     // Get fee percentiles from previous transactions to estimate our own fee.
     let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
 
-    let fee_per_byte = 1000; // 1 satoshi per byte @review (mainnet)
-    // if fee_percentiles.is_empty() {
-    //     // There are no fee percentiles. This case can only happen on a regtest
-    //     // network where there are no non-coinbase transactions. In this case,
-    //     // we use a default of 2000 millisatoshis/byte (i.e. 2 satoshi/byte)
-    //     2000
-    // } else {
-    //     // Choose the 50th percentile for sending fees.
-    //     fee_percentiles[50]
-    // };
+    let fee_per_byte =
+    if fee_percentiles.is_empty() {
+        // There are no fee percentiles. This case can only happen on a regtest
+        // network where there are no non-coinbase transactions. In this case,
+        // we use a default of 2000 millisatoshis/byte (i.e. 2 satoshi/byte)
+        2000
+    } else {
+        // Choose the 50th percentile for sending fees.
+        fee_percentiles[50]
+    };
 
     // Fetch our public key, address, and UTXOs.
     let own_public_key =
@@ -336,19 +338,6 @@ pub async fn test_utxos(
     derivation_path: Vec<Vec<u8>>,
     key_name: String,
 ) -> Vec<String> {
-    // Get fee percentiles from previous transactions to estimate our own fee.
-    let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
-
-    let fee_per_byte = if fee_percentiles.is_empty() {
-        // There are no fee percentiles. This case can only happen on a regtest
-        // network where there are no non-coinbase transactions. In this case,
-        // we use a default of 2000 millisatoshis/byte (i.e. 2 satoshi/byte)
-        2000
-    } else {
-        // Choose the 50th percentile for sending fees.
-        fee_percentiles[50]
-    };
-
     // Fetch our public key, address, and UTXOs.
     let own_public_key =
         ecdsa_api::ecdsa_public_key(key_name.clone(), derivation_path.clone()).await;
@@ -608,7 +597,8 @@ async fn build_unsigned_mint(
     own_public_key: &[u8],
     own_address: BitcoinAddress,
     select_utxo: Utxo,
-    fee_utxos: &[ic_btc_interface::Utxo],
+    // fee_utxos: &[ic_btc_interface::Utxo],
+    fee_utxos: &[Utxo],
     dst_address: BitcoinAddress,
     fee_per_byte: MillisatoshiPerByte,
 ) -> UnsignedTransaction {
@@ -650,7 +640,8 @@ async fn build_unsigned_mint(
 
 fn build_unsigned_mint_with_fee(
     select_utxo: Utxo,
-    fee_utxos: &[ic_btc_interface::Utxo],
+    // fee_utxos: &[ic_btc_interface::Utxo],
+    fee_utxos: &[Utxo],
     own_address: BitcoinAddress,
     dst_address: BitcoinAddress,
     fee: u64,
@@ -692,7 +683,8 @@ fn build_unsigned_mint_with_fee(
         .into_iter()
         .map(|utxo| UnsignedInput {
             previous_output: ic_ckbtc_minter_tyron::tx::OutPoint {
-                txid: utxo.outpoint.txid,
+                // txid: utxo.outpoint.txid,
+                txid: vec_to_txid(utxo.outpoint.txid.clone()),
                 vout: utxo.outpoint.vout,
             },
             value: utxo.value,

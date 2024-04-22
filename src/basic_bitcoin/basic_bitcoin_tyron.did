@@ -182,6 +182,7 @@ type MinterInfo = record {
 
 service : (network, MinterArg) -> {
     "get_p2pkh_address": () -> (bitcoin_address);
+
     "get_p2wpkh_address": () -> (bitcoin_address);
 
     "get_balance": (address: bitcoin_address) -> (satoshi);
@@ -203,19 +204,17 @@ service : (network, MinterArg) -> {
 
     // Mints SU$D for newly deposited UTXOs.
     //
-    // If the transaction owner is not set, it defaults to the caller's principal.
-    //
     // # Preconditions
     //
-    // * A BTC deposit was made to the bitcoin_address of the SSI Vault, which the
-    //   [get_btc_address] endpoint returns.
-    "update_balance" : (record { owner: opt principal; subaccount : opt blob; ssi: text }) -> (variant { Ok: vec UtxoStatus; Err: UpdateBalanceError });
+    // * A BTC deposit was made to the address returned by the
+    //   [get_box_address] endpoint.
+    "update_ssi_balance" : (record { ssi: text }) -> (variant { Ok: vec UtxoStatus; Err: UpdateBalanceError });
     
     "get_susd" : (record { ssi: text }, txid: text) -> (text);
 
     "update_ssi" : (record { ssi: text }) -> (text);
     
-    "get_subaccount": ( ssi: bitcoin_address ) -> (blob);
+    "get_subaccount": ( nonce: nat64, ssi: bitcoin_address ) -> (blob) query;
 
     "get_minter_info": () -> (MinterInfo) query;
 

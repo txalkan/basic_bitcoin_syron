@@ -21,9 +21,10 @@ ic-cdk-macros = "0.8.3"
 ripemd = "0.1.1"
 serde = "1.0.132"
 sha2 = "0.10.2"
-ic-ckbtc-minter-tyron = { git = "https://github.com/txalkan/ic", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
-icrc-ledger-types = { git = "https://github.com/txalkan/ic", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
-ic-management-canister-types = { git = "https://github.com/txalkan/ic", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
+ic-ckbtc-minter-tyron = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
+icrc-ledger-types = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
+ic-management-canister-types = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
 ic-btc-interface = { git = "https://github.com/dfinity/bitcoin-canister", rev = "62a71e47c491fb842ccc257b1c675651501f4b82" }
 serde_bytes = "0.11"
-ic-canister-log = { git = "https://github.com/txalkan/ic", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
+ic-canister-log = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
+#evm-rpc = { git = "https://github.com/internet-computer-protocol/evm-rpc-canister", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
