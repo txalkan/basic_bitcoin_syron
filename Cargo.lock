@@ -139,7 +139,7 @@ dependencies = [
 
 [[package]]
 name = "basic_bitcoin_tyron"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bitcoin",
  "bs58",
@@ -151,10 +151,12 @@ dependencies = [
  "ic-cdk-macros 0.8.4",
  "ic-ckbtc-minter-tyron",
  "ic-management-canister-types",
+ "ic-stable-structures 0.5.6",
  "icrc-ledger-types",
  "ripemd",
  "serde",
  "serde_bytes",
+ "serde_json",
  "sha2",
 ]
 
@@ -931,7 +933,7 @@ dependencies = [
  "ic-cdk 0.13.2",
  "ic-cdk-macros 0.9.0",
  "ic-metrics-encoder",
- "ic-stable-structures",
+ "ic-stable-structures 0.6.2",
  "num-traits",
  "serde",
  "serde_json",
@@ -963,7 +965,7 @@ dependencies = [
  "ic-ledger-core",
  "ic-management-canister-types",
  "ic-metrics-encoder",
- "ic-stable-structures",
+ "ic-stable-structures 0.6.2",
  "ic-utils-ensure",
  "ic-xrc-types",
  "ic0 0.18.11",
@@ -1221,6 +1223,12 @@ dependencies = [
  "serde_json",
  "slog",
 ]
+
+[[package]]
+name = "ic-stable-structures"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95dce29e3ceb0e6da3e78b305d95365530f2efd2146ca18590c0ef3aa6038568"
 
 [[package]]
 name = "ic-stable-structures"

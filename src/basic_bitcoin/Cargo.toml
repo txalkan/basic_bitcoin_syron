@@ -1,7 +1,7 @@
 [package]
 name = "basic_bitcoin_tyron"
-version = "0.1.0"
-edition = "2018"
+version = "0.2.0"
+edition = "2021"
 authors = ["Xalkan Duarte <xalkan@tyron.io>"]
 description = "Tyron is a decentralized finance (DeFi) project focused on developing the Syron U$ Dollar (SU$D), an overcollateralized stablecoin pegged to the U.S. dollar and backed by BTC. Powered by the Internet Computer, Syron aims to provide users with seamless access to USD liquidity while leveraging the security and decentralization of Bitcoin."
 documentation = "https://docs.tyron.io"
@@ -27,4 +27,6 @@ ic-management-canister-types = { git = "https://github.com/txalkan/ic", rev = "4
 ic-btc-interface = { git = "https://github.com/dfinity/bitcoin-canister", rev = "62a71e47c491fb842ccc257b1c675651501f4b82" }
 serde_bytes = "0.11"
 ic-canister-log = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
-#evm-rpc = { git = "https://github.com/internet-computer-protocol/evm-rpc-canister", rev = "e4e8860328bd616a6864b14898c0501ce0da8253" }
+# evm-btc-canister = { git = "https://github.com/txalkan/evm-btc-canister", package = "evm_rpc"} @review (dep)
+ic-stable-structures = "0.5"
+serde_json = "1.0"
