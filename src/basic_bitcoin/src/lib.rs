@@ -2,15 +2,19 @@ mod bitcoin_api;
 mod bitcoin_wallet;
 mod ecdsa_api;
 mod types;
+mod constants;
+mod provider;
+
+pub use crate::types::*;
+pub use crate::provider::*;
+pub use crate::constants::*;
 
 use ic_cdk::{api::management_canister::bitcoin::{
-    BitcoinNetwork, GetUtxosResponse, MillisatoshiPerByte, Utxo,
+    BitcoinNetwork, GetUtxosResponse, MillisatoshiPerByte,
 }, query};
 use ic_cdk_macros::{init, post_upgrade, pre_upgrade, update};
-use types::SendRequest;
 use std::cell::{Cell, RefCell};
 
-use candid::Principal;
 use ic_ckbtc_minter_tyron::{
     lifecycle::{
         self,
@@ -26,6 +30,8 @@ use ic_ckbtc_minter_tyron::{
 };
 
 use icrc_ledger_types::icrc1::account::Subaccount;
+
+use candid::candid_method;
 
 thread_local! {
     // The bitcoin network to connect to.
@@ -72,6 +78,8 @@ pub fn init(network: BitcoinNetwork, args: MinterArg) {
             panic!("expected InitArgs got UpgradeArgs");
         }
     }
+
+    init_service_provider()
 }
 
 /// Returns the balance of the given bitcoin address.
@@ -117,7 +125,7 @@ pub async fn get_p2wpkh_address() -> String {
 
 /// 1. Using P2PKH
 #[update]
-pub async fn send(request: types::SendRequest) -> String {
+pub async fn send(request: SendRequest) -> String {
     let derivation_path = DERIVATION_PATH.with(|d| d.clone());
     let network = NETWORK.with(|n| n.get());
     let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
@@ -270,5 +278,22 @@ fn get_minter_info() -> MinterInfo {
         kyt_fee: s.kyt_fee,
         min_confirmations: s.min_confirmations,
         retrieve_btc_min_amount: s.retrieve_btc_min_amount,
+    })
+}
+
+#[update(name = "addServiceProvider")]// @review (mainnet),, guard = "require_add_provider")]
+#[candid_method(rename = "addServiceProvider")]
+fn add_service_provider(args: RegisterProviderArgs) -> u64 {
+    register_provider(args)
+}
+
+#[query(name = "getServiceProviderMap")]// @review (mainnet), guard = "require_manage_or_controller")]
+#[candid_method(query, rename = "getServiceProviderMap")]
+fn get_service_provider_map() -> Vec<(ServiceProvider, u64)> {
+    SERVICE_PROVIDER_MAP.with(|map| {
+        map.borrow()
+            .iter()
+            .filter_map(|(k, v)| Some((k.try_into().ok()?, v)))
+            .collect()
     })
 }

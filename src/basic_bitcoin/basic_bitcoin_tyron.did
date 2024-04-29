@@ -180,6 +180,22 @@ type MinterInfo = record {
     kyt_fee : nat64;
 };
 
+type HttpHeader = record { value: text; name: text };
+
+type RegisterProviderArgs = record {
+    chainId: nat64;
+    hostname: text;
+    credentialPath: text;
+    credentialHeaders: opt vec HttpHeader;
+    cyclesPerCall: nat64;
+    cyclesPerMessageByte: nat64;
+};
+
+type ServiceProvider = variant {
+    Chain: nat64;
+    Provider: nat64;
+};
+
 service : (network, MinterArg) -> {
     "get_p2pkh_address": () -> (bitcoin_address);
 
@@ -218,5 +234,9 @@ service : (network, MinterArg) -> {
 
     "get_minter_info": () -> (MinterInfo) query;
 
-    "test" : () -> ( vec text);
+    "test": () -> ( vec text);
+
+    "addServiceProvider": (RegisterProviderArgs) -> (nat64);
+
+    "getServiceProviderMap": () -> (vec record { ServiceProvider; nat64 }) query;
 }

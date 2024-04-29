@@ -1,5 +1,9 @@
-use candid::{CandidType, Deserialize, Principal};
+use candid::{CandidType, Deserialize, Principal, Encode, Decode};
 use serde::Serialize;
+use ic_cdk::api::management_canister::http_request::HttpHeader;
+use ic_stable_structures::{BoundedStorable, Storable};
+use std::borrow::Cow;
+use crate::{constants::STORABLE_SERVICE_MAX_SIZE, AUTH_SET_STORABLE_MAX_SIZE, PROVIDER_MAX_SIZE};
 
 #[derive(CandidType, Deserialize)]
 pub struct SendRequest {
@@ -42,4 +46,266 @@ pub struct SignWithECDSA {
     pub message_hash: Vec<u8>,
     pub derivation_path: Vec<Vec<u8>>,
     pub key_id: EcdsaKeyId,
+}
+
+// @dev principal storable
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub struct PrincipalStorable(pub Principal);
+
+impl Storable for PrincipalStorable {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::from(self.0.as_slice())
+    }
+
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Self(Principal::from_slice(&bytes))
+    }
+}
+
+impl BoundedStorable for PrincipalStorable {
+    const MAX_SIZE: u32 = 29;
+    const IS_FIXED_SIZE: bool = false;
+}
+
+// @dev auth set
+
+#[derive(Clone, Copy, Debug, PartialEq, CandidType, Serialize, Deserialize)]
+pub enum Auth {
+    Manage,
+    RegisterProvider,
+    PriorityRpc,
+    FreeRpc,
+}
+
+#[derive(Clone, Debug, PartialEq, CandidType, Serialize, Deserialize, Default)]
+pub struct AuthSet(Vec<Auth>);
+
+impl AuthSet {
+    pub fn new(auths: Vec<Auth>) -> Self {
+        let mut auth_set = Self(Vec::with_capacity(auths.len()));
+        for auth in auths {
+            // Deduplicate
+            auth_set.authorize(auth);
+        }
+        auth_set
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn is_authorized(&self, auth: Auth) -> bool {
+        self.0.contains(&auth)
+    }
+
+    pub fn authorize(&mut self, auth: Auth) -> bool {
+        if !self.is_authorized(auth) {
+            self.0.push(auth);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn deauthorize(&mut self, auth: Auth) -> bool {
+        if let Some(index) = self.0.iter().position(|a| *a == auth) {
+            self.0.remove(index);
+            true
+        } else {
+            false
+        }
+    }
+}
+
+// Using explicit JSON representation in place of enum indices for security
+impl Storable for AuthSet {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        serde_json::from_slice(&bytes).expect("Unable to deserialize AuthSet")
+    }
+
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(serde_json::to_vec(self).expect("Unable to serialize AuthSet"))
+    }
+}
+
+impl BoundedStorable for AuthSet {
+    const MAX_SIZE: u32 = AUTH_SET_STORABLE_MAX_SIZE;
+    const IS_FIXED_SIZE: bool = false;
+}
+
+// @dev service provider
+
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct Metadata {
+    pub next_provider_id: u64,
+    pub open_rpc_access: bool,
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Self {
+            next_provider_id: 0,
+            open_rpc_access: true,
+        }
+    }
+}
+
+impl Storable for Metadata {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(Encode!(self).unwrap())
+    }
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Decode!(&bytes, Self).unwrap()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Ord, PartialOrd, Hash, Serialize, Deserialize, CandidType)]
+pub struct ProviderApi {
+    pub url: String,
+    pub headers: Option<Vec<HttpHeader>>,
+}
+
+#[derive(Clone, CandidType, Deserialize)]
+pub struct Provider {
+    #[serde(rename = "providerId")]
+    pub provider_id: u64,
+    pub owner: Principal,
+    #[serde(rename = "chainId")]
+    pub chain_id: u64,
+    pub hostname: String,
+    #[serde(rename = "credentialPath")]
+    pub credential_path: String,
+    #[serde(rename = "credentialHeaders")]
+    pub credential_headers: Vec<HttpHeader>,
+    #[serde(rename = "cyclesPerCall")]
+    pub cycles_per_call: u64,
+    #[serde(rename = "cyclesPerMessageByte")]
+    pub cycles_per_message_byte: u64,
+    #[serde(rename = "cyclesOwed")]
+    pub cycles_owed: u128,
+    pub primary: bool,
+}
+
+impl Provider {
+    pub fn api(&self) -> ProviderApi {
+        ProviderApi {
+            url: format!("https://{}{}", self.hostname, self.credential_path),
+            headers: if self.credential_headers.is_empty() {
+                None
+            } else {
+                Some(self.credential_headers.clone())
+            },
+        }
+    }
+}
+
+impl Storable for Provider {
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(Encode!(self).unwrap())
+    }
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        Decode!(&bytes, Self).unwrap()
+    }
+}
+
+impl BoundedStorable for Provider {
+    const MAX_SIZE: u32 = PROVIDER_MAX_SIZE;
+    const IS_FIXED_SIZE: bool = false;
+}
+
+#[derive(Clone, CandidType, Deserialize)]
+pub struct RegisterProviderArgs {
+    #[serde(rename = "chainId")]
+    pub chain_id: u64,
+    pub hostname: String,
+    #[serde(rename = "credentialPath")]
+    pub credential_path: String,
+    #[serde(rename = "credentialHeaders")]
+    pub credential_headers: Option<Vec<HttpHeader>>,
+    #[serde(rename = "cyclesPerCall")]
+    pub cycles_per_call: u64,
+    #[serde(rename = "cyclesPerMessageByte")]
+    pub cycles_per_message_byte: u64,
+}
+
+#[derive(Clone, PartialEq, Eq, Ord, PartialOrd, Hash, Serialize, Deserialize, CandidType)]
+pub enum ServiceProvider {
+    Chain(u64),
+    Provider(u64),
+}
+
+impl std::fmt::Debug for ServiceProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ServiceProvider::Chain(chain_id) => write!(f, "Chain({})", chain_id),
+            ServiceProvider::Provider(provider_id) => write!(f, "Provider({})", provider_id),
+        }
+    }
+}
+
+// @dev storable service provider
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct StorableServiceProvider(Vec<u8>);
+
+impl TryFrom<StorableServiceProvider> for ServiceProvider {
+    type Error = serde_json::Error;
+    fn try_from(value: StorableServiceProvider) -> Result<Self, Self::Error> {
+        serde_json::from_slice(&value.0)
+    }
+}
+
+impl StorableServiceProvider {
+    pub fn new(service: &ServiceProvider) -> Self {
+        // Store as JSON string to remove the possibility of RPC services getting mixed up
+        // if we make changes to `RpcService`, `EthMainnetService`, etc.
+        Self(
+            serde_json::to_vec(service)
+                .expect("BUG: unexpected error while serializing RpcService"),
+        )
+    }
+}
+
+impl Storable for StorableServiceProvider {
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        StorableServiceProvider(bytes.to_vec())
+    }
+
+    fn to_bytes(&self) -> Cow<[u8]> {
+        Cow::Owned(self.0.to_owned())
+    }
+}
+
+impl BoundedStorable for StorableServiceProvider {
+    const MAX_SIZE: u32 = STORABLE_SERVICE_MAX_SIZE;
+    const IS_FIXED_SIZE: bool = false;
+}
+
+// @dev resolved provider
+
+pub enum ResolvedServiceProvider {
+    Provider(Provider),
+}
+
+impl ResolvedServiceProvider {
+    pub fn api(&self) -> ProviderApi {
+        match self {
+            Self::Provider(provider) => provider.api(),
+        }
+    }
+}
+
+// @dev provider error
+
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
+pub enum ProviderError {
+    // #[error("no permission")]
+    NoPermission,
+    // #[error("too few cycles (expected {expected}, received {received})")]
+    TooFewCycles { expected: u128, received: u128 },
+    // #[error("provider not found")]
+    ProviderNotFound,
+    // #[error("missing required provider")]
+    MissingRequiredProvider,
 }
