@@ -1,9 +1,11 @@
-use candid::{CandidType, Deserialize, Principal, Encode, Decode};
+use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
 use serde::Serialize;
 use ic_cdk::api::management_canister::http_request::HttpHeader;
 use ic_stable_structures::{BoundedStorable, Storable};
 use std::borrow::Cow;
 use crate::{constants::STORABLE_SERVICE_MAX_SIZE, AUTH_SET_STORABLE_MAX_SIZE, PROVIDER_MAX_SIZE};
+use ic_cdk::api::call::RejectionCode;
+use thiserror::Error;
 
 #[derive(CandidType, Deserialize)]
 pub struct SendRequest {
@@ -48,7 +50,7 @@ pub struct SignWithECDSA {
     pub key_id: EcdsaKeyId,
 }
 
-// @dev principal storable
+// @dev Principal storable
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct PrincipalStorable(pub Principal);
@@ -68,7 +70,7 @@ impl BoundedStorable for PrincipalStorable {
     const IS_FIXED_SIZE: bool = false;
 }
 
-// @dev auth set
+// @dev Authentication set
 
 #[derive(Clone, Copy, Debug, PartialEq, CandidType, Serialize, Deserialize)]
 pub enum Auth {
@@ -134,7 +136,7 @@ impl BoundedStorable for AuthSet {
     const IS_FIXED_SIZE: bool = false;
 }
 
-// @dev service provider
+// @dev Service provider
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct Metadata {
@@ -244,7 +246,7 @@ impl std::fmt::Debug for ServiceProvider {
     }
 }
 
-// @dev storable service provider
+// @dev Storable service provider
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct StorableServiceProvider(Vec<u8>);
@@ -282,7 +284,7 @@ impl BoundedStorable for StorableServiceProvider {
     const IS_FIXED_SIZE: bool = false;
 }
 
-// @dev resolved provider
+// @dev Resolved provider
 
 pub enum ResolvedServiceProvider {
     Provider(Provider),
@@ -296,7 +298,7 @@ impl ResolvedServiceProvider {
     }
 }
 
-// @dev provider error
+// @dev Provider errors
 
 #[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
 pub enum ProviderError {
@@ -309,3 +311,99 @@ pub enum ProviderError {
     // #[error("missing required provider")]
     MissingRequiredProvider,
 }
+
+#[derive(Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord, CandidType, Deserialize)]
+pub enum ValidationError {
+    // #[error("{0}")]
+    Custom(String),
+    // #[error("invalid hex data: {0}")]
+    InvalidHex(String),
+    // #[error("URL parse error: {0}")]
+    UrlParseError(String),
+    // #[error("hostname not allowed: {0}")]
+    HostNotAllowed(String),
+    // #[error("credential path not allowed")]
+    CredentialPathNotAllowed,
+    // #[error("credential header not allowed")]
+    CredentialHeaderNotAllowed,
+}
+
+#[derive(
+    Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord, CandidType, Serialize, Deserialize, Error,
+)]
+#[error("code {code}: {message}")]
+pub struct JsonRpcError {
+    pub code: i64,
+    pub message: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
+pub enum ServiceError {
+    // #[error("Service provider error")]
+    ProviderError(/* #[source] */ ProviderError),
+    // #[error("HTTPS outcall error")]
+    HttpOutcallError(/* #[source] */ HttpOutcallError),
+    // #[error("JSON-RPC error")]
+    JsonRpcError(/* #[source] */ JsonRpcError),
+    // #[error("data format error")]
+    ValidationError(/* #[source] */ ValidationError),
+}
+
+impl From<ProviderError> for ServiceError {
+    fn from(err: ProviderError) -> Self {
+        ServiceError::ProviderError(err)
+    }
+}
+
+impl From<HttpOutcallError> for ServiceError {
+    fn from(err: HttpOutcallError) -> Self {
+        ServiceError::HttpOutcallError(err)
+    }
+}
+
+impl From<JsonRpcError> for ServiceError {
+    fn from(err: JsonRpcError) -> Self {
+        ServiceError::JsonRpcError(err)
+    }
+}
+
+impl From<ValidationError> for ServiceError {
+    fn from(err: ValidationError) -> Self {
+        ServiceError::ValidationError(err)
+    }
+}
+
+#[derive(Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord, CandidType, Deserialize)]
+pub enum HttpOutcallError {
+    /// Error from the IC system API.
+    // #[error("IC system error code {}: {message}", *.code as i32)]
+    IcError {
+        code: RejectionCode,
+        message: String,
+    },
+    /// Response is not a valid JSON-RPC response,
+    /// which means that the response was not successful (status other than 2xx)
+    /// or that the response body could not be deserialized into a JSON-RPC response.
+    // #[error("invalid JSON-RPC response {status}: {})", .parsing_error.as_deref().unwrap_or(.body))]
+    InvalidHttpJsonRpcResponse {
+        status: u16,
+        body: String,
+        #[serde(rename = "parsingError")]
+        parsing_error: Option<String>,
+    },
+}
+
+pub fn is_response_too_large(code: &RejectionCode, message: &str) -> bool {
+    code == &RejectionCode::SysFatal && message.contains("size limit")
+}
+
+impl HttpOutcallError {
+    pub fn is_response_too_large(&self) -> bool {
+        match self {
+            Self::IcError { code, message } => is_response_too_large(code, message),
+            _ => false,
+        }
+    }
+}
+
+pub type ServiceResult<T> = Result<T, ServiceError>;
