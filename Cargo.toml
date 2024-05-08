@@ -2,3 +2,5 @@
 members = [
     "src/basic_bitcoin",
 ]
+
+workspace.resolver = "2"

@@ -15,18 +15,25 @@ crate-type = ["cdylib"]
 hex = "0.4.3"
 bitcoin = "0.28.1"
 bs58 = "0.4.0"
-candid = { version = "0.10.7" }
+candid = { version = "0.10.8" }
 ic-cdk = "0.12.0"
 ic-cdk-macros = "0.8.3"
 ripemd = "0.1.1"
 serde = "1.0.132"
 sha2 = "0.10.2"
-ic-ckbtc-minter-tyron = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
-icrc-ledger-types = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
-ic-management-canister-types = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
+ic-ckbtc-minter-tyron = { git = "https://github.com/txalkan/ic", rev = "d81d75b3bbb41e7e88c92d8a9b6f052fc33265fa" }
+icrc-ledger-types = { git = "https://github.com/txalkan/ic", rev = "d81d75b3bbb41e7e88c92d8a9b6f052fc33265fa" }
+ic-management-canister-types = { git = "https://github.com/txalkan/ic", rev = "d81d75b3bbb41e7e88c92d8a9b6f052fc33265fa" }
 ic-btc-interface = { git = "https://github.com/dfinity/bitcoin-canister", rev = "62a71e47c491fb842ccc257b1c675651501f4b82" }
 serde_bytes = "0.11"
-ic-canister-log = { git = "https://github.com/txalkan/ic", rev = "498509c5f5484e1349a5fd362fa70913749e74f2" }
-# evm-btc-canister = { git = "https://github.com/txalkan/evm-btc-canister", package = "evm_rpc"} @review (dep)
+ic-canister-log = { git = "https://github.com/txalkan/ic", rev = "d81d75b3bbb41e7e88c92d8a9b6f052fc33265fa" }
 ic-stable-structures = "0.5"
 serde_json = "1.0"
+thiserror = "1.0.57"
+num-traits = "0.2"
+
+# @review
+# evm-btc-canister = { git = "https://github.com/txalkan/evm-btc-canister", package = "evm_rpc"} @review (dep)
+# tokio = { version = "1", features = ["full"] }
+# ic0 = "0.21.1"
+# url = "2.4"
