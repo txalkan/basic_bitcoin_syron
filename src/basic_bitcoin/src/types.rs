@@ -1,4 +1,4 @@
-use candid::{CandidType, Decode, Deserialize, Encode, Nat, Principal};
+use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use serde::Serialize;
 use ic_cdk::api::management_canister::http_request::HttpHeader;
 use ic_stable_structures::{BoundedStorable, Storable};

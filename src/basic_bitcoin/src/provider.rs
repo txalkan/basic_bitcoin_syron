@@ -5,7 +5,7 @@
 
 use ic_cdk::api::management_canister::http_request::HttpHeader;
 
-use crate::{constants::{BTC_SIGNET_CHAIN_ID, BTC_TESTNET_CHAIN_ID, OPI_SIGNET_HOSTNAME, OPI_TESTNET_HOSTNAME, OPI_TEST_CREDENTIAL}, types::{Provider, RegisterProviderArgs, ServiceProvider, StorableServiceProvider} };
+use crate::{constants::{BIS_CREDENTIAL_PATH, BIS_SIGNET_HOSTNAME, BIS_TESTNET_HOSTNAME, BTC_SIGNET_CHAIN_ID, BTC_TESTNET_CHAIN_ID}, types::{Provider, RegisterProviderArgs, ServiceProvider, StorableServiceProvider}, BIS_MAINNET_HOSTNAME, BTC_MAINNET_CHAIN_ID, TYRON_CREDENTIAL_PATH, TYRON_MAINNET_HOSTNAME, TYRON_TESTNET_HOSTNAME, UNISAT_MAINNET_HOSTNAME, UNISAT_TESTNET_HOSTNAME };
 
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 #[cfg(target_arch = "wasm32")]
@@ -67,22 +67,71 @@ pub fn init_service_provider() {
 
 pub fn get_default_providers() -> Vec<RegisterProviderArgs> {
     vec![
-        //@review (mainnet) add provider
+        //@provider
         RegisterProviderArgs {
-            chain_id: BTC_TESTNET_CHAIN_ID, //@review (mainnet)
-            hostname: OPI_TESTNET_HOSTNAME.to_string(),
-            credential_path: OPI_TEST_CREDENTIAL.to_string(),
+            chain_id: BTC_MAINNET_CHAIN_ID,
+            hostname: TYRON_MAINNET_HOSTNAME.to_string(),
+            credential_path: TYRON_CREDENTIAL_PATH.to_string(),
+            credential_headers: None,
+            cycles_per_call: 0,
+            cycles_per_message_byte: 0,
+        },
+        RegisterProviderArgs {
+            chain_id: BTC_TESTNET_CHAIN_ID,
+            hostname: TYRON_TESTNET_HOSTNAME.to_string(),
+            credential_path: TYRON_CREDENTIAL_PATH.to_string(),
+            credential_headers: None,
+            cycles_per_call: 0,
+            cycles_per_message_byte: 0,
+        },
+        RegisterProviderArgs {
+            chain_id: BTC_MAINNET_CHAIN_ID,
+            hostname: UNISAT_MAINNET_HOSTNAME.to_string(),
+            credential_path: "".to_string(),
+            credential_headers: Some(vec![HttpHeader{
+                name: "Authorization".to_string(),
+                value: "Bearer @api".to_string()
+            }]),
+            cycles_per_call: 0,
+            cycles_per_message_byte: 0,
+        },
+        RegisterProviderArgs {
+            chain_id: BTC_TESTNET_CHAIN_ID,
+            hostname: UNISAT_TESTNET_HOSTNAME.to_string(),
+            credential_path: "".to_string(),
+            credential_headers: Some(vec![HttpHeader{
+                name: "Authorization".to_string(),
+                value: "Bearer @api".to_string()
+            }]),
+            cycles_per_call: 0,
+            cycles_per_message_byte: 0,
+        },
+        RegisterProviderArgs {
+            chain_id: BTC_MAINNET_CHAIN_ID,
+            hostname: BIS_MAINNET_HOSTNAME.to_string(),
+            credential_path: BIS_CREDENTIAL_PATH.to_string(),
             credential_headers: Some(vec![HttpHeader{
                 name: "x-api-key".to_string(),
-                value: "b0540ee5-2790-49cc-9639-89b36e005109".to_string()
+                value: "@api better to include provider as update operation".to_string()
+            }]),
+            cycles_per_call: 0,
+            cycles_per_message_byte: 0,
+        },
+        RegisterProviderArgs {
+            chain_id: BTC_TESTNET_CHAIN_ID,
+            hostname: BIS_TESTNET_HOSTNAME.to_string(),
+            credential_path: BIS_CREDENTIAL_PATH.to_string(),
+            credential_headers: Some(vec![HttpHeader{
+                name: "x-api-key".to_string(),
+                value: "@api".to_string()
             }]),
             cycles_per_call: 0,
             cycles_per_message_byte: 0,
         },
         RegisterProviderArgs {
             chain_id: BTC_SIGNET_CHAIN_ID,
-            hostname: OPI_SIGNET_HOSTNAME.to_string(),
-            credential_path: OPI_TEST_CREDENTIAL.to_string(),
+            hostname: BIS_SIGNET_HOSTNAME.to_string(),
+            credential_path: BIS_CREDENTIAL_PATH.to_string(),
             credential_headers: None,
             cycles_per_call: 0,
             cycles_per_message_byte: 0,
@@ -127,15 +176,36 @@ pub fn register_provider(args: RegisterProviderArgs) -> u64 {
     provider_id
 }
 
+// @provider
 pub fn get_default_service_provider_hostnames() -> Vec<(ServiceProvider, &'static str)> {
     vec![
         (
+            ServiceProvider::Chain(0),
+            TYRON_MAINNET_HOSTNAME,
+        ),
+        (
             ServiceProvider::Chain(11),
-            OPI_TESTNET_HOSTNAME,
+            TYRON_TESTNET_HOSTNAME,
+        ),
+        (
+            ServiceProvider::Chain(0),
+            UNISAT_MAINNET_HOSTNAME,
+        ),
+        (
+            ServiceProvider::Chain(11),
+            UNISAT_TESTNET_HOSTNAME,
+        ),
+        (
+            ServiceProvider::Chain(0),
+            BIS_MAINNET_HOSTNAME,
+        ),
+        (
+            ServiceProvider::Chain(11),
+            BIS_TESTNET_HOSTNAME,
         ),
         (
             ServiceProvider::Chain(111),
-            OPI_SIGNET_HOSTNAME,
+            BIS_SIGNET_HOSTNAME,
         ),
     ]
 }

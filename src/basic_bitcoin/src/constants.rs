@@ -26,6 +26,12 @@ pub const CONTENT_TYPE_VALUE: &str = "application/json";
 
 // @dev Providers
 
+pub const TYRON_MAINNET_HOSTNAME: &str = "bitcoin.tyron.io/";
+
+pub const TYRON_TESTNET_HOSTNAME: &str = "testnet.tyron.io/";
+
+pub const TYRON_CREDENTIAL_PATH: &str = "api/";
+
 pub const UNISAT_MAINNET_HOSTNAME: &str = "open-api.unisat.io/";
 
 pub const UNISAT_TESTNET_HOSTNAME: &str = "open-api-testnet.unisat.io/";
