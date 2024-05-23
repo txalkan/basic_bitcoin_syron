@@ -1,7 +1,54 @@
 use ic_cdk::api::management_canister::http_request::{CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs, TransformContext};
+use ic_ckbtc_minter_tyron::updates::update_balance::UpdateBalanceError;
 use serde_json::Value;
 use crate::{resolve_service_provider, HttpOutcallError, ResolvedServiceProvider, ServiceError, ServiceProvider, ServiceResult, CONTENT_TYPE_HEADER, CONTENT_TYPE_VALUE };
 use num_traits::ToPrimitive;
+
+pub async fn call_indexer_inscription(
+    provider: u64,
+    txid: String,
+    cycles_cost: u128
+) -> Result<String, UpdateBalanceError> {
+    let endpoint = match provider {
+        0 | 1 =>   format!("get-unisat-inscription-info?id={}i0", txid), // @tyron
+        2 | 3 =>   format!("v1/indexer/inscription/info/{}i0", txid), // @unisat
+        _ => format!("inscription/single_info_id?inscription_id={}i0", txid) // @bis
+    };
+
+    let outcall = match web3_request(ServiceProvider::Provider(provider), &endpoint, "", 2048, cycles_cost).await {
+        Ok(result) => result,
+        Err(err) => {
+            return Err(UpdateBalanceError::GenericError{
+                error_code: 333,
+                error_message: format!("Failed to finalize HTTPS Outcall with error: {:?}", err),
+            });
+        }
+    };
+    Ok(outcall)
+}
+
+pub async fn call_indexer_balance(
+    address: String,
+    provider: u64,
+    cycles_cost: u128
+) -> Result<String, UpdateBalanceError> {
+    let endpoint = match provider {
+        0 | 1 =>   format!("get-unisat-brc20-info?id={}", address), // @tyron
+        2 | 3 =>   format!("v1/indexer/address/{}/brc20/summary", address), // @unisat
+        _ => format!("inscription/single_info_id?inscription_id={}i0", address) // @bis
+    };
+
+    let outcall = match web3_request(ServiceProvider::Provider(provider), &endpoint, "", 2048, cycles_cost).await {
+        Ok(result) => result,
+        Err(err) => {
+            return Err(UpdateBalanceError::GenericError{
+                error_code: 444,
+                error_message: format!("Failed to finalize HTTPS Outcall with error: {:?}", err),
+            });
+        }
+    };
+    Ok(outcall)
+}
 
 pub async fn web3_request(
     service: ServiceProvider,
@@ -47,6 +94,10 @@ async fn do_request(
         ResolvedServiceProvider::Provider(provider) => {
             match provider.provider_id {
                 0 | 1 => Some(TransformContext::from_name(
+                    "transform_request".to_string(),
+                    vec![],
+                )),
+                2 | 3 => Some(TransformContext::from_name(
                     "transform_unisat_request".to_string(),
                     vec![],
                 )),
@@ -87,6 +138,16 @@ fn get_http_response_body(response: HttpResponse) -> Result<String, ServiceError
 
 pub fn get_http_response_status(status: candid::Nat) -> u16 {
     status.0.to_u16().unwrap_or(u16::MAX)
+}
+
+pub fn do_transform_request(mut args: TransformArgs) -> HttpResponse {
+    let body = canonicalize_json(&args.response.body).unwrap_or(args.response.body.clone());
+    args.response.body = body;
+    
+    // Remove potentially conflicting fields to reach a consensus across replicas
+    args.response.headers.clear();
+
+    args.response
 }
 
 pub fn do_transform_unisat_request(mut args: TransformArgs) -> HttpResponse {

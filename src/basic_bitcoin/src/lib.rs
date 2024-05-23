@@ -1,18 +1,30 @@
 mod bitcoin_api;
 mod bitcoin_wallet;
 mod ecdsa_api;
-mod types;
 mod constants;
+mod types;
 mod provider;
+mod http;
 
+pub use crate::constants::*;
 pub use crate::types::*;
 pub use crate::provider::*;
-pub use crate::constants::*;
+pub use crate::http::*;
 
+use bitcoin::Network;
+use bitcoin::OutPoint;
+use ic_cdk::api::management_canister::http_request::HttpResponse;
+use ic_cdk::api::management_canister::http_request::TransformArgs;
 use ic_cdk::{api::management_canister::bitcoin::{
     BitcoinNetwork, GetUtxosResponse, MillisatoshiPerByte,
 }, query};
 use ic_cdk_macros::{init, post_upgrade, pre_upgrade, update};
+use ic_ckbtc_minter_tyron::address::public_key_to_p2wpkh;
+use ic_ckbtc_minter_tyron::lifecycle::init::BtcNetwork;
+use ic_ckbtc_minter_tyron::updates::retrieve_btc::balance_of;
+use ic_ckbtc_minter_tyron::updates::retrieve_btc::SyronLedger;
+use ic_ckbtc_minter_tyron::updates::update_balance::syron_update;
+use serde_json::Value;
 use std::cell::{Cell, RefCell};
 
 use ic_ckbtc_minter_tyron::{
@@ -24,7 +36,7 @@ use ic_ckbtc_minter_tyron::{
     storage::record_event,
     tasks::{schedule_now, TaskType},
     updates::{
-        self, get_btc_address::GetBoxAddressArgs, get_withdrawal_account::compute_subaccount, update_balance::{UpdateBalanceError, UtxoStatus}
+        self, get_btc_address::{self, GetBoxAddressArgs}, get_withdrawal_account::compute_subaccount, update_balance::{UpdateBalanceError, UtxoStatus}
     },
     MinterInfo
 };
@@ -58,8 +70,10 @@ pub fn init(network: BitcoinNetwork, args: MinterArg) {
         key_name.replace(String::from(match network {
             // For local development, we use a special test key with dfx.
             BitcoinNetwork::Regtest => "dfx_test_key",
+            // BitcoinNetwork::Signet => "sig_key_1",
             // On the IC we're using a test ECDSA key.
-            BitcoinNetwork::Mainnet | BitcoinNetwork::Testnet => "test_key_1",
+            BitcoinNetwork::Testnet => "test_key_1",
+            BitcoinNetwork::Mainnet => "main_key_1",
         }))
     });
     
@@ -80,6 +94,14 @@ pub fn init(network: BitcoinNetwork, args: MinterArg) {
     }
 
     init_service_provider()
+}
+
+#[update]
+pub async fn get_network() -> BitcoinNetwork {
+    let network = NETWORK.with(|n| n.get());
+    let network_ = read_state(|s| (s.btc_network));
+
+    network
 }
 
 /// Returns the balance of the given bitcoin address.
@@ -142,23 +164,113 @@ pub async fn send(request: SendRequest) -> String {
 }
 
 /// 2. Using P2WPKH
-#[update]
-pub async fn mint(address: String, txid: String) -> String {
-    let derivation_path = DERIVATION_PATH.with(|d| d.clone());
-    let network = NETWORK.with(|n| n.get());
+pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64) -> Result<String, UpdateBalanceError> {
+    // @dev Check BRC-20 transfer inscription.
+    let outcall = call_indexer_inscription(provider, txid.clone(), cycles_cost).await?;
+
+    let outcall_json: Value = serde_json::from_str(&outcall).unwrap();
+
+    // Access the "amt" field in the "brc20" object
+    let receiver_address: String = outcall_json.pointer("/data/address")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+
+    // Access the "amt" field in the "brc20" object
+    let syron_inscription: String = outcall_json.pointer("/data/brc20/amt")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+
+    // The Syron inscribed amount must be less than the limit or throw UpdateBalanceError::GenericError
+    let syron_f64: f64 = syron_inscription.parse().unwrap_or(0.0);
+    let syron_u64: u64 = (syron_f64 * 100_000_000 as f64) as u64;
+    
+    // @dev Read SU$D available balance (nonce #2)
+    let balance = balance_of(SyronLedger::SUSD, &ssi, 2).await.unwrap();
+
+    // Set a limit so that users cannot withdraw more than 2 cents above their balance, being 1 cent = 1_000_000
+    let limit = balance + 2_000_000;
+
+    if syron_u64 > limit {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 555,
+            error_message: "Insufficient balance to withdraw stablecoin".to_string(),
+
+        });
+    }
+
+    // @dev Get Syron Bitcoin address (The receiver of the transfer inscription must be equal to the Syron address)
     let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
+    let derivation_path = DERIVATION_PATH.with(|d| d.clone());
+    
+    let own_public_key =
+        ecdsa_api::ecdsa_public_key(key_name.clone(), derivation_path.clone()).await;
+    
+    let syron_address = public_key_to_p2wpkh(&own_public_key);
+
+    if receiver_address != syron_address {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 334,
+            error_message: format!("Receiver address ({}) must be equal to the Syron address ({})", receiver_address, syron_address),
+        });
+    }
+
+    // @dev Send SU$D to user's address
+
+    let network = NETWORK.with(|n| n.get());
+    
     let tx_id = bitcoin_wallet::mint_p2wpkh(
         network,
         derivation_path,
         key_name,
-        address,
+        syron_address,
+        &ssi,
         txid,
     )
     .await;
 
     let txid_bytes = tx_id.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
     let txid_hex = hex::encode(txid_bytes);
-    txid_hex
+
+    // Update Syron SU$D Ledger
+    // @dev Compute the new balance amount as the limit less the syron inscription
+    let new_balance = limit - syron_u64;
+
+    // do not consider new balance below 0.003 SU$D
+    if new_balance < 3_000_000 {
+        // withdraw full balance
+        syron_update(&ssi, 2, 3, balance).await.unwrap(); // @doc 2 is the nonce of the balance subaccount, and 3 the BRC-20 subaccount.
+    } else {
+        syron_update(&ssi, 2, 3, syron_u64).await.unwrap();
+    }
+
+    Ok(txid_hex)
+}
+
+#[query(hidden = true)]
+fn transform_request(args: TransformArgs) -> HttpResponse {
+    do_transform_request(args)
+}
+
+#[query(hidden = true)]
+fn transform_unisat_request(args: TransformArgs) -> HttpResponse {
+    do_transform_unisat_request(args)
+}
+
+#[query(hidden = true)]
+fn transform_bis_request(args: TransformArgs) -> HttpResponse {
+    do_transform_bis_request(args)
+}
+
+#[update]
+pub async fn get_inscription(txid: String, cycles_cost: u64, provider: u64) -> Result<String, UpdateBalanceError> {
+    call_indexer_inscription(provider, txid.clone(), cycles_cost as u128).await
+}
+
+#[update]
+pub async fn withdraw_susd(args: GetBoxAddressArgs, txid: String, cycles_cost: u64, provider: u64) -> Result<String, UpdateBalanceError> {
+    mint(args.ssi, txid, cycles_cost as u128, provider).await
 }
 
 #[update]
@@ -209,9 +321,10 @@ fn check_postcondition<T>(t: T) -> T {
 #[update]
 async fn get_box_address(args: GetBoxAddressArgs) -> String {
     // check_anonymous_caller();
-    updates::get_btc_address::get_box_address(args).await
+    get_btc_address::get_box_address(args).await
 }
 
+// @dev Testnet only: Check bitcoin deposit and mint OR burn stablecoin
 #[update]
 async fn update_ssi_balance(args: GetBoxAddressArgs) -> Result<Vec<UtxoStatus>, UpdateBalanceError> {
     // check_anonymous_caller();
@@ -219,15 +332,41 @@ async fn update_ssi_balance(args: GetBoxAddressArgs) -> Result<Vec<UtxoStatus>, 
 }
 
 #[update]
-async fn get_susd(args: GetBoxAddressArgs, txid: String) -> String {
-    let address = (&args.ssi).to_string();
+async fn get_susd(args: GetBoxAddressArgs, txid: String) -> Result<String, UpdateBalanceError> {
+    let ssi = (&args.ssi).to_string();
 
     // @dev 1. Update Balance (the user's $Box MUST have BTC deposit confirmed)
     let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
     
     // @dev 2. Transfer stablecoin from minter to user address
-    let tx_id = mint(address, txid).await;
-    tx_id
+    // let res = mint(ssi, txid, cycles_cost as u128, 1).await; // @review (mainnet) provider ID
+    
+    let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
+    let derivation_path = DERIVATION_PATH.with(|d| d.clone());
+    
+    let own_public_key =
+        ecdsa_api::ecdsa_public_key(key_name.clone(), derivation_path.clone()).await;
+    
+    let syron_address = public_key_to_p2wpkh(&own_public_key);
+
+    // @dev Send SU$D to user's address
+
+    let network = NETWORK.with(|n| n.get());
+    
+    let tx_id = bitcoin_wallet::mint_p2wpkh(
+        network,
+        derivation_path,
+        key_name,
+        syron_address,
+        &ssi,
+        txid,
+    )
+    .await;
+
+    let txid_bytes = tx_id.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
+    let txid_hex = hex::encode(txid_bytes);
+
+    Ok(txid_hex)
 }
 
 #[update]
@@ -238,10 +377,11 @@ async fn update_ssi(args: GetBoxAddressArgs) -> String {
     let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
     
     // @dev 2. Transfer stablecoin from minter to the user's wallet
-
+    
     let derivation_path = DERIVATION_PATH.with(|d| d.clone());
     let network = NETWORK.with(|n| n.get());
     let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
+    
     let tx_id = bitcoin_wallet::send_p2wpkh(
         network,
         derivation_path,
@@ -296,4 +436,56 @@ fn get_service_provider_map() -> Vec<(ServiceProvider, u64)> {
             .filter_map(|(k, v)| Some((k.try_into().ok()?, v)))
             .collect()
     })
+}
+
+#[update]
+pub async fn get_indexed_balance(id: String) -> Result<String, UpdateBalanceError> {
+    call_indexer_balance(id, 1, 72_000_000).await
+}
+
+#[update]
+async fn redeem_btc(args: GetBoxAddressArgs, txid: String) -> Result<String, UpdateBalanceError> {
+    let ssi = (&args.ssi).to_string();
+    let sdb = get_btc_address::get_box_address(args.clone()).await;
+
+    // @dev
+    // 1. Check SU$D balance of the safety deposit box with the Tyron indexer
+    let outcall = call_indexer_balance(sdb.clone(), 1, 72_000_000).await?;
+    let syron_f64: f64 = outcall.parse().unwrap_or(0.0);
+    let syron_u64: u64 = (syron_f64 * 100_000_000 as f64) as u64;
+    
+    // 2. Get the SU$D balance of the user's $Box (subaccount with nonce 1) = SU$D[1]
+    // 3. Deposit must be at lest >= SU$D[1] - 0.02 SU$D OR throw UpdateBalanceError
+    let balance = balance_of(SyronLedger::SUSD, &ssi, 1).await.unwrap();
+    let limit = balance - 2_000_000;
+
+    if syron_u64 < limit {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 445,
+            error_message: "Insufficient balance to redeem bitcoin".to_string(),
+        });
+    }
+
+    let network = NETWORK.with(|n| n.get());
+    let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
+    
+    // 4. Transfer bitcoin from SDB to wallet
+    let amount = balance_of(SyronLedger::BTC, &ssi, 1).await.unwrap();
+
+    let tx_id = bitcoin_wallet::burn_p2wpkh(
+        amount,
+        &ssi,
+        network,
+        key_name,
+        sdb,
+        &ssi,
+        txid,
+    )
+    .await;
+
+    // 4. Update Syron ledgers
+    let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
+
+    let txid_bytes = tx_id.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
+    Ok(hex::encode(txid_bytes))
 }

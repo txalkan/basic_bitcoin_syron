@@ -21,9 +21,9 @@ This architecture ensures easy access to USD liquidity while retaining BTC owner
 
 == Bitcoin Testnet
 
-Explore Tyron's open-source web application to interact with the Bitcoin testnet:
+Explore Tyron's open-source web application to interact with the Bitcoin Testnet:
 
-https://testnet.tyron.io[testnet.tyron.io]
+https://tyron.io[tyron.io]
 
 == Prerequisites
 
@@ -41,35 +41,71 @@ To verify the installation, run:
 dfx -V
 ----
 
-== Local Deployment
+== Bitcoin and Ord Local Deployment on Regtest
 
 * [x] Download https://bitcoin.org/en/download[Bitcoin Core]
 
 After downloading, unpack the .tar.gz file:
 
 ----
-tar -xfz bitcoin-25.0-x86_64-apple-darwin.tar.gz
+tar -xzf bitcoin-25.0-x86_64-apple-darwin.tar.gz
 ----
 
-Then, open the bitcoin.conf file and insert the following content:
+Open the .zshrc & save your path to bitcoind:
 
 ----
-# Enable regtest mode. This is required to setup a private bitcoin network.
-regtest=1
-
-# Dummy credentials that are required by `bitcoin-cli`.
-rpcuser=ic-btc-integration
-rpcpassword=QPQiNaph19FqUsCrBRN0FII7lyM26B51fAMeBQzCb-E=
-rpcauth=ic-btc-integration:cdf2741387f3a12438f69092f0fdad8e$62081498c98bee09a0dce2b30671123fa561932992ce377585e8e08bb0c11dfa
+nano ~/.zshrc 
+export PATH="/Users/tralkan/bitcoin/bitcoin-25.0/bin:$PATH"
 ----
 
-And start a local Bitcoin runtime with the command:
+Download  `ord`:
 
 ----
-./bin/bitcoind -conf=$(pwd)/bitcoin.conf -datadir=$(pwd)/data --port=18444
+brew install ord
 ----
 
-=== Execution Environment
+Run Regtest:
+
+----
+bitcoind -regtest -txindex
+----
+
+----
+bitcoin-cli -regtest -getinfo
+----
+
+----
+ord --regtest server
+----
+
+Create a new wallet and get its address:
+
+----
+ord --regtest wallet create
+ord --regtest wallet receive
+----
+
+image::public/images/syron_user_wallet.png[]
+
+1- Save the address of your Bitcoin wallet, e.g.:
+
+----
+export SSI=<your_wallet_address>
+----
+
+Mine some bitcoin into your wallet:
+
+----
+bitcoin-cli -regtest generatetoaddress 3 <your_wallet_address>
+----
+
+And check your wallet balance:
+
+----
+ord --regtest wallet balance 
+----
+
+=== Internet Computer Execution Environment
 
 Start a local Internet Computer execution environment:
 
@@ -83,7 +119,7 @@ In a separate terminal tab, update the submodules recursively:
 git submodule update --init --recursive
 ----
 
-Let's use the ICP local network:
+2- Select the ICP local network:
 
 ----
 export NET=local
@@ -91,13 +127,20 @@ export NET=local
 
 === Syron Ledgers
 
+3- Get your principal's ID:
+
+----
+export SYRON=$(dfx identity get-principal)
+export PRINCIPAL=$(dfx identity get-principal)
+----
+
 Deploy the BTC & SU$D ledgers:
 
 ----
 make ledgers
 ----
 
-Save their IDs:
+4- Save the Syron ledgers IDs:
 
 ----
 export BTC_LEDGER=$(dfx canister id icrc1_ledger_syron_btc) SUSD_LEDGER=$(dfx canister id icrc1_ledger_syron_susd)
@@ -105,35 +148,52 @@ export BTC_LEDGER=$(dfx canister id icrc1_ledger_syron_btc) SUSD_LEDGER=$(dfx ca
 
 === Exchange Rate Canister
 
+We are using the official XRC canister with ID "uf6dk-hyaaa-aaaaq-qaaaq-cai".
+
+In case you want to deploy your own XRC canister, follow these steps:
+
 Install dependencies:
 
 ----
 cd src/xrc_demo && npm i
 ----
 
-Deploy locally:
+Deploy your own XRC canister:
 
 ----
 dfx deploy
 ----
 
+
 === Syron Minter
 
-Finally, deploy the Syron minter using:
+5- Set the ECDSA key name (test_key_1 on Testnet or dfx_test_key on Regtest):
 
 ----
-cd ../.. && make deploy
+export ECDSA_KEY=dfx_test_key
+----
+
+*Deploy the Syron minter*:
+
+----
+make syron
+----
+
+6- Save Syron's ID:
+
+----
+export SYRON=$(dfx canister id basic_bitcoin_tyron)
+----
+
+Reinstall the Syron ledgers, which sets Syron's ID as the minting account:
+
+----
+make re_ledgers
 ----
 
 === Safety Deposit ₿ox
 
-1) Save your BTC testnet address:
-
-----
-export SSI=<your_btc_address>
-----
-
-2) Obtain the address of your SD₿ with the following command:
+Obtain the address of your SD₿ with the following command:
 
 ----
 make box
@@ -143,9 +203,14 @@ image::public/images/syron_make_box.png[]
 
 3) Deposit BTC into your Safety Deposit ₿ox
 
-You can mine blocks to earn bitcoin. Go to your Bitcoin Core repo and run the following command to mine 1 block:
+You can mine blocks to earn bitcoin. Go to your Bitcoin folder and run the following command:
 
 ----
-./bin/bitcoin-cli -conf=$(pwd)/bitcoin.conf generatetoaddress 1 <your_box_address>
+bitcoin-cli -regtest generatetoaddress 3 <your_box_address>
 ----
 
+== Withdraw SU$D
+
+----
+make susd
+----
