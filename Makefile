@@ -197,5 +197,5 @@ in_bal:
 
 .PHONY: redeem
 redeem:
-	dfx canister --ic call basic_bitcoin_tyron redeem_btc "(record { ssi=\"$(SSI)\"; op=variant { redeembitcoin }}, \"$(TXID)\")"; \
+	dfx canister --ic call basic_bitcoin_tyron redeem_btc "(record { ssi=\"$(SSI)\"; op=variant { redeembitcoin }})"; \
    

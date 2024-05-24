@@ -36,7 +36,7 @@ use ic_ckbtc_minter_tyron::{
     storage::record_event,
     tasks::{schedule_now, TaskType},
     updates::{
-        self, get_btc_address::{self, GetBoxAddressArgs}, get_withdrawal_account::compute_subaccount, update_balance::{UpdateBalanceError, UtxoStatus}
+        self, get_btc_address::{self, GetBoxAddressArgs, SyronOperation}, get_withdrawal_account::compute_subaccount, update_balance::{UpdateBalanceError, UtxoStatus}
     },
     MinterInfo
 };
@@ -194,8 +194,8 @@ pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64) -
 
     if syron_u64 > limit {
         return Err(UpdateBalanceError::GenericError{
-            error_code: 555,
-            error_message: "Insufficient balance to withdraw stablecoin".to_string(),
+            error_code: 300,
+            error_message: "Insufficient SUSD balance to withdraw the inscribed amount of stablecoin".to_string(),
 
         });
     }
@@ -211,7 +211,7 @@ pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64) -
 
     if receiver_address != syron_address {
         return Err(UpdateBalanceError::GenericError{
-            error_code: 334,
+            error_code: 301,
             error_message: format!("Receiver address ({}) must be equal to the Syron address ({})", receiver_address, syron_address),
         });
     }
@@ -336,6 +336,7 @@ async fn get_susd(args: GetBoxAddressArgs, txid: String) -> Result<String, Updat
     let ssi = (&args.ssi).to_string();
 
     // @dev 1. Update Balance (the user's $Box MUST have BTC deposit confirmed)
+    // @review (mint) syron operation
     let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
     
     // @dev 2. Transfer stablecoin from minter to user address
@@ -369,6 +370,7 @@ async fn get_susd(args: GetBoxAddressArgs, txid: String) -> Result<String, Updat
     Ok(txid_hex)
 }
 
+// @test
 #[update]
 async fn update_ssi(args: GetBoxAddressArgs) -> String {
     let address = (&args.ssi).to_string();
@@ -444,7 +446,15 @@ pub async fn get_indexed_balance(id: String) -> Result<String, UpdateBalanceErro
 }
 
 #[update]
-async fn redeem_btc(args: GetBoxAddressArgs, txid: String) -> Result<String, UpdateBalanceError> {
+async fn redeem_btc(args: GetBoxAddressArgs) -> Result<String, UpdateBalanceError> {
+    // verify args.op = RedeemBitcoin or throw erorr
+    if args.op != SyronOperation::RedeemBitcoin {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 400,
+            error_message: "Invalid operation".to_string(),
+        });
+    }   
+
     let ssi = (&args.ssi).to_string();
     let sdb = get_btc_address::get_box_address(args.clone()).await;
 
@@ -461,8 +471,8 @@ async fn redeem_btc(args: GetBoxAddressArgs, txid: String) -> Result<String, Upd
 
     if syron_u64 < limit {
         return Err(UpdateBalanceError::GenericError{
-            error_code: 445,
-            error_message: "Insufficient balance to redeem bitcoin".to_string(),
+            error_code: 401,
+            error_message: "Insufficient SUSD deposited balance to redeem bitcoin".to_string(),
         });
     }
 
@@ -479,7 +489,64 @@ async fn redeem_btc(args: GetBoxAddressArgs, txid: String) -> Result<String, Upd
         key_name,
         sdb,
         &ssi,
-        txid,
+    )
+    .await;
+
+    // 4. Update Syron ledgers of debtor
+    let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
+
+    let txid_bytes = tx_id.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
+    Ok(hex::encode(txid_bytes))
+}
+
+
+#[update]
+async fn liquidate(args: GetBoxAddressArgs, id: String) -> Result<String, UpdateBalanceError> {
+    let ssi: &str = &args.ssi;
+    
+    // @dev Verify collateral ratio is below 12,000 basis points or throw error
+    let btc_1 = balance_of(SyronLedger::BTC, ssi, 1).await.unwrap();
+    let susd_1 = balance_of(SyronLedger::SUSD, ssi, 1).await.unwrap();
+    // let collateral_ratio = btc_1 * exchange_rate / susd_1; @review move upstream
+    
+    let sdb_debtor = get_btc_address::get_box_address(args.clone()).await;
+
+    let liquidator = GetBoxAddressArgs {
+        ssi: id.clone(),
+        op: get_btc_address::SyronOperation::Liquidation,
+    };
+
+    let sdb_liquidator = get_btc_address::get_box_address(liquidator).await;
+
+    // @dev
+    // 2. Check the liquidator's SUSD balance in their safety deposit box with the Tyron indexer
+    let outcall = call_indexer_balance(sdb_liquidator.clone(), 1, 72_000_000).await?;
+    let syron_f64: f64 = outcall.parse().unwrap_or(0.0);
+    let syron_u64: u64 = (syron_f64 * 100_000_000 as f64) as u64;
+    
+    // 3. Liquidator's balance must be at lest >= SU$D[1] - 0.02 SU$D OR throw UpdateBalanceError
+    let limit = btc_1 - 2_000_000;
+
+    if syron_u64 < limit {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 501,
+            error_message: "Insufficient liquidator SUSD balance to liquidate debtor".to_string(),
+        });
+    }
+
+    let network = NETWORK.with(|n| n.get());
+    let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
+    
+    // 4. Transfer bitcoin from debtor's SDB to the user's wallet (SSI)
+    let amount = balance_of(SyronLedger::BTC, &ssi, 1).await.unwrap();
+
+    let tx_id = bitcoin_wallet::burn_p2wpkh(
+        amount,
+        ssi,
+        network,
+        key_name,
+        sdb_debtor,
+        &id
     )
     .await;
 

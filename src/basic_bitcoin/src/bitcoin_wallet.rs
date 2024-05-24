@@ -273,8 +273,7 @@ pub async fn burn_p2wpkh(
     btc_network: BitcoinNetwork,
     key_name: String,
     sdb: String,
-    dst_address: &str,
-    txid: String,
+    dst_address: &str
 ) -> [u8;32] {
     // Get fee percentiles from previous transactions to estimate our own fee.
     // let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;

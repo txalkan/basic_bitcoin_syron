@@ -202,6 +202,7 @@ type ServiceProvider = variant {
 type syron_operation = variant {
     getsyron;
     redeembitcoin;
+    liquidation;
 };
 
 type GetBoxAddressArgs = record {
@@ -259,5 +260,7 @@ service : (network, MinterArg) -> {
 
     "get_indexed_balance": (id: text) -> (variant { Ok: text; Err: UpdateBalanceError });
     
-    "redeem_btc": (args: GetBoxAddressArgs, txid: text) -> (variant { Ok: text; Err: UpdateBalanceError });
+    "redeem_btc": (args: GetBoxAddressArgs) -> (variant { Ok: text; Err: UpdateBalanceError });
+
+    "liquidate": (args: GetBoxAddressArgs, id: text) -> (variant { Ok: text; Err: UpdateBalanceError });
 }
