@@ -210,6 +210,13 @@ type GetBoxAddressArgs = record {
     op: syron_operation
 };
 
+type CollateralizedAccount = record {
+    exchange_rate: nat64;
+    collateral_ratio: nat64;
+    btc_1: nat64;
+    susd_1: nat64;
+};
+
 service : (network, MinterArg) -> {
     "get_p2pkh_address": () -> (bitcoin_address);
 
@@ -239,6 +246,10 @@ service : (network, MinterArg) -> {
     // * A BTC deposit was made to the address returned by the
     //   [get_box_address] endpoint.
     "update_ssi_balance": (GetBoxAddressArgs) -> (variant { Ok: vec UtxoStatus; Err: UpdateBalanceError });
+
+    "susd_balance_of": (ssi: bitcoin_address, nonce: nat64) -> (nat64);
+
+    "sbtc_balance_of": (ssi: bitcoin_address, nonce: nat64) -> (nat64);
     
     "get_inscription": (txid: text, cycles_cost: nat64, provider: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
     
@@ -262,5 +273,7 @@ service : (network, MinterArg) -> {
     
     "redeem_btc": (args: GetBoxAddressArgs) -> (variant { Ok: text; Err: UpdateBalanceError });
 
-    "liquidate": (args: GetBoxAddressArgs, id: text) -> (variant { Ok: text; Err: UpdateBalanceError });
+    "get_account": (ssi: bitcoin_address, dummy: bool) -> (variant { Ok: CollateralizedAccount; Err: UpdateBalanceError });
+
+    "liquidate": (args: GetBoxAddressArgs, id: text, txid: text) -> (variant { Ok: vec text; Err: UpdateBalanceError });
 }

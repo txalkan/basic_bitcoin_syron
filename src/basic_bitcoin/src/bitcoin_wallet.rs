@@ -146,11 +146,11 @@ pub async fn send(
     signed_transaction.txid()
 }
 
-pub async fn mint_p2wpkh(
+pub async fn syron_p2wpkh(
     btc_network: BitcoinNetwork,
-    derivation_path: Vec<Vec<u8>>,
     key_name: String,
-    syron_address: String,
+    origin_derivation_path: Vec<Vec<u8>>,
+    origin_address: String,
     dst_address: &str,
     txid: String,
 ) -> [u8;32] {
@@ -158,7 +158,7 @@ pub async fn mint_p2wpkh(
     // let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
 
     // @dev Gas in satoshis per byte @review (signet)
-    let fee_per_byte = 50000;
+    let fee_per_byte = 270000;
     // if fee_percentiles.is_empty() {
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
@@ -169,9 +169,9 @@ pub async fn mint_p2wpkh(
     //     fee_percentiles[50]
     // };
 
-    // @dev Fetch Syron's public key, address, and UTXOs.
+    // @dev Fetch sender's public key, address, and UTXOs.
     let own_public_key =
-        ecdsa_api::ecdsa_public_key(key_name.clone(), derivation_path.clone()).await;
+        ecdsa_api::ecdsa_public_key(key_name.clone(), origin_derivation_path.clone()).await;
 
     let network =
         state::read_state(|s| (s.btc_network));
@@ -187,7 +187,7 @@ pub async fn mint_p2wpkh(
     // For the sake of simplicity, it is assumed here that the `utxo` field in the response
     // contains all UTXOs.
     let own_utxos: Vec<Utxo> =
-        bitcoin_api::get_utxos(btc_network, syron_address.clone())
+        bitcoin_api::get_utxos(btc_network, origin_address.clone())
         .await
         .utxos;
 
@@ -236,7 +236,7 @@ pub async fn mint_p2wpkh(
 
     let select_utxo = option_utxo.expect("No matching UTXO found!");
 
-    let syron_btc_address = BitcoinAddress::parse(&syron_address, network).unwrap();
+    let syron_btc_address = BitcoinAddress::parse(&origin_address, network).unwrap();
     let dst_address = BitcoinAddress::parse(&dst_address, network).unwrap();
     
     // @dev Builds the transaction that sends the selected UTXO (transfer inscription) to the destination address.
@@ -255,7 +255,7 @@ pub async fn mint_p2wpkh(
         &own_public_key,
         transaction,
         key_name,
-        derivation_path,
+        origin_derivation_path,
     )
     .await.unwrap();
 
@@ -279,7 +279,7 @@ pub async fn burn_p2wpkh(
     // let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
 
     // @dev Gas in satoshis per byte @review (signet)
-    let fee_per_byte = 50000;
+    let fee_per_byte = 270000;
     // if fee_percentiles.is_empty() {
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
