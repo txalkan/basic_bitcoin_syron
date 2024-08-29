@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "dfx": "0.19.0",
+  "dfx": "0.22.0",
   "canisters": {
     "icrc1_ledger_syron_btc": {
       "type": "custom",
