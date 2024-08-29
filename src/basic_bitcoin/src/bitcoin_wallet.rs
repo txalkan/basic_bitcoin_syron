@@ -85,8 +85,8 @@ pub async fn send(
     let fee_per_byte = if fee_percentiles.is_empty() {
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
-        // we use a default of 2000 millisatoshis/byte (i.e. 2 satoshi/byte)
-        2000
+        // we use a default of 5000 millisatoshis/byte (i.e. 5 satoshi/byte)
+        5000
     } else {
         // Choose the 50th percentile for sending fees.
         fee_percentiles[50]
@@ -155,19 +155,18 @@ pub async fn syron_p2wpkh(
     txid: String,
 ) -> [u8;32] {
     // Get fee percentiles from previous transactions to estimate our own fee.
-    // let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
+    let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
 
     // @dev Gas in satoshis per byte @review (signet)
-    let fee_per_byte = 270000;
-    // if fee_percentiles.is_empty() {
+    let fee_per_byte = if fee_percentiles.is_empty() {
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
-        // we use a default of 20000 millisatoshis/byte (i.e. 20 satoshi/byte)
-    //     20000
-    // } else {
+        // we use a default of 5000 millisatoshis/byte (i.e. 5 satoshi/byte)
+        5000
+    } else {
         // Choose the 50th percentile for sending fees.
-    //     fee_percentiles[50]
-    // };
+        fee_percentiles[50]
+    };
 
     // @dev Fetch sender's public key, address, and UTXOs.
     let own_public_key =
@@ -276,19 +275,18 @@ pub async fn burn_p2wpkh(
     dst_address: &str
 ) -> [u8;32] {
     // Get fee percentiles from previous transactions to estimate our own fee.
-    // let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
+    let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
 
     // @dev Gas in satoshis per byte @review (signet)
-    let fee_per_byte = 270000;
-    // if fee_percentiles.is_empty() {
+    let fee_per_byte = if fee_percentiles.is_empty() {
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
-        // we use a default of 20000 millisatoshis/byte (i.e. 20 satoshi/byte)
-    //     20000
-    // } else {
+        // we use a default of 5000 millisatoshis/byte (i.e. 5 satoshi/byte)
+        5000
+    } else {
         // Choose the 50th percentile for sending fees.
-    //     fee_percentiles[50]
-    // };
+        fee_percentiles[50]
+    };
 
     // let (ecdsa_public_key) =
     // read_state(|s| (s.ecdsa_public_key));
@@ -378,12 +376,11 @@ pub async fn send_p2wpkh(
     // Get fee percentiles from previous transactions to estimate our own fee.
     let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
 
-    let fee_per_byte =
-    if fee_percentiles.is_empty() {
+    let fee_per_byte = if fee_percentiles.is_empty() {
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
-        // we use a default of 2000 millisatoshis/byte (i.e. 2 satoshi/byte)
-        2000
+        // we use a default of 20000 millisatoshis/byte (i.e. 5 satoshi/byte)
+        5000
     } else {
         // Choose the 50th percentile for sending fees.
         fee_percentiles[50]
@@ -889,8 +886,8 @@ async fn sign_transaction_p2wpkh(
 
     let path = convert_to_bytebufs(derivation_path);
  
-    let key_name = "test_key_1".to_string(); //@review (sign) key_name should not be empty
-
+    let key_name_ = "test_key_1".to_string(); // @review (mainnet)
+    
     for input in &unsigned_tx.inputs {
         let outpoint = &input.previous_output;
 
@@ -900,7 +897,7 @@ async fn sign_transaction_p2wpkh(
         let sighash = sighasher.sighash(&input, &pkhash);
 
         let sec1_signature =
-            sign_with_ecdsa(key_name.clone(), DerivationPath::new(path.clone()), sighash)
+            sign_with_ecdsa(key_name_.clone(), DerivationPath::new(path.clone()), sighash)
             .await;
 
         signed_inputs.push(SignedInput {
