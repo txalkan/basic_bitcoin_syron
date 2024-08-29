@@ -74,10 +74,11 @@ pub fn init(network: BitcoinNetwork, args: MinterArg) {
         key_name.replace(String::from(match network {
             // For local development, we use a special test key with dfx.
             BitcoinNetwork::Regtest => "dfx_test_key",
+            BitcoinNetwork::Mainnet => "key_1",
             // BitcoinNetwork::Signet => "sig_key_1",
             // On the IC we're using a test ECDSA key.
-            BitcoinNetwork::Testnet => "test_key_1",
-            BitcoinNetwork::Mainnet => "main_key_1",
+            _ => "test_key_1"
+            
         }))
     });
     
@@ -252,6 +253,14 @@ pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64) -
     let balance = balance_of(SyronLedger::SUSD, &ssi, 2).await.unwrap();
 
     let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
+
+    // if empty, throw error
+    if key_name.is_empty() {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 300,
+            error_message: "Key name is empty".to_string(),
+        });
+    }
     
     // @dev Get Syron Bitcoin address (The receiver of this transfer inscription must be equal to the Syron address)
     let syron_derivation_path = DERIVATION_PATH.with(|d| d.clone());
@@ -277,7 +286,7 @@ pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64) -
     // @dev Compute the new balance amount as the limit less the syron inscription
     let new_balance = transfer.limit - transfer.syron;
 
-    // do not consider new balance below 0.003 SU$D
+    // do not consider new balance below 0.003 SUSD
     if new_balance < 3_000_000 {
         // withdraw full balance
         syron_update(&ssi, 2, 3, balance).await.unwrap(); // @doc 2 is the nonce of the balance subaccount, and 3 the BRC-20 subaccount.
@@ -310,6 +319,11 @@ pub async fn get_inscription(txid: String, cycles_cost: u64, provider: u64) -> R
 
 #[update]
 pub async fn withdraw_susd(args: GetBoxAddressArgs, txid: String, cycles_cost: u64, provider: u64) -> Result<String, UpdateBalanceError> {
+    // @review (mainnet) automate provider config per network
+    
+    // @dev 1. Update Balance (the user's SDB MUST have BTC deposit confirmed)
+    let _ = updates::update_balance::update_ssi_balance(args.clone()).await;
+    
     mint(args.ssi, txid, cycles_cost as u128, provider).await
 }
 
@@ -364,7 +378,7 @@ async fn get_box_address(args: GetBoxAddressArgs) -> String {
     get_btc_address::get_box_address(args).await
 }
 
-// @dev Testnet only: Check bitcoin deposit and mint OR burn stablecoin
+// @dev Check bitcoin deposit and update ledgers (mint OR burn stablecoin)
 #[update]
 async fn update_ssi_balance(args: GetBoxAddressArgs) -> Result<Vec<UtxoStatus>, UpdateBalanceError> {
     // check_anonymous_caller();
@@ -393,8 +407,7 @@ async fn sbtc_balance_of(ssi: String, nonce: u64) -> u64 {
 async fn get_susd(args: GetBoxAddressArgs, txid: String) -> Result<String, UpdateBalanceError> {
     let ssi = (&args.ssi).to_string();
 
-    // @dev 1. Update Balance (the user's $Box MUST have BTC deposit confirmed)
-    // @review (mint) syron operation
+    // @dev 1. Update Balance (the user's SDB MUST have BTC deposit confirmed)
     let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
     
     // @dev 2. Transfer stablecoin from minter to user address
@@ -408,7 +421,7 @@ async fn get_susd(args: GetBoxAddressArgs, txid: String) -> Result<String, Updat
     
     let syron_address = public_key_to_p2wpkh(&own_public_key);
 
-    // @dev Send SU$D to user's address
+    // @dev Send SUSD to user's address
 
     let network = NETWORK.with(|n| n.get());
     
@@ -433,7 +446,7 @@ async fn get_susd(args: GetBoxAddressArgs, txid: String) -> Result<String, Updat
 async fn update_ssi(args: GetBoxAddressArgs) -> String {
     let address = (&args.ssi).to_string();
 
-    // @dev 1. Update Balance (the user's $Box MUST have BTC deposit confirmed)
+    // @dev 1. Update Balance (the user's SDB MUST have BTC deposit confirmed)
     let _ = check_postcondition(updates::update_balance::update_ssi_balance(args).await);
     
     // @dev 2. Transfer stablecoin from minter to the user's wallet
@@ -517,7 +530,7 @@ async fn redeem_btc(args: GetBoxAddressArgs) -> Result<String, UpdateBalanceErro
     let sdb = get_btc_address::get_box_address(args.clone()).await;
 
     // @dev
-    // 1. Check SU$D balance of the safety deposit box with the Tyron indexer
+    // 1. Check SUSD balance of the safety deposit box with the Tyron indexer
     let syron_u64: u64 = match get_syron_balance(sdb.clone()).await {
         Some(balance) => balance,
         None => {
@@ -528,8 +541,8 @@ async fn redeem_btc(args: GetBoxAddressArgs) -> Result<String, UpdateBalanceErro
         }
     };
     
-    // 2. Get the SU$D balance of the user's $Box (subaccount with nonce 1) = SU$D[1]
-    // 3. Deposit must be at lest >= SU$D[1] - 0.02 SU$D OR throw UpdateBalanceError
+    // 2. Get the Syron ledger's SUSD record of the user's SDB (subaccount with nonce 1) = SUSD[1]
+    // 3. Deposit must be at lest >= SUSD[1] - 0.02 SUSD OR throw UpdateBalanceError
     let balance = balance_of(SyronLedger::SUSD, &ssi, 1).await.unwrap();
     let limit = balance - 2_000_000;
 
