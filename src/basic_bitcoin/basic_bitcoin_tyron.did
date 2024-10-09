@@ -218,60 +218,42 @@ type CollateralizedAccount = record {
 };
 
 service : (network, MinterArg) -> {
-    "get_p2pkh_address": () -> (bitcoin_address);
+    "get_minter_info": () -> (MinterInfo) query;
+
+    "addServiceProvider": (RegisterProviderArgs) -> (nat64);
+
+    "getServiceProviderMap": () -> (vec record { ServiceProvider; nat64 }) query;
 
     "get_p2wpkh_address": () -> (bitcoin_address);
 
-    "get_balance": (address: bitcoin_address) -> (satoshi);
-
-    "get_utxos": (bitcoin_address) -> (get_utxos_response);
-
     "get_current_fee_percentiles": () -> (vec millisatoshi_per_vbyte);
-
-    "send": (record {
-      destination_address: bitcoin_address;
-      amount_in_satoshi: satoshi;
-    }) -> (transaction_id);
-
-    "get_network": () -> (network);
+    "get_fee_percentile": (percentile: nat64) -> (nat64);
 
     // Returns the bitcoin address to which the user should send BTC
     // to get SU$D using the [update_balance] endpoint.
     "get_box_address": (GetBoxAddressArgs) -> (bitcoin_address);
 
+    "get_inscription": (txid: text, cycles_cost: nat64, provider: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
+    
+    "get_indexed_balance": (id: text) -> (variant { Ok: text; Err: UpdateBalanceError });
+    
     // Mints SU$D for newly deposited UTXOs.
     //
     // # Preconditions
     //
     // * A BTC deposit was made to the address returned by the
     //   [get_box_address] endpoint.
-    "update_ssi_balance": (GetBoxAddressArgs) -> (variant { Ok: vec UtxoStatus; Err: UpdateBalanceError });
+    "withdraw_susd": (args: GetBoxAddressArgs, txid: text, cycles_cost: nat64, provider: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
+    
+    "get_subaccount": (nonce: nat64, ssi: bitcoin_address) -> (blob) query;
 
     "susd_balance_of": (ssi: bitcoin_address, nonce: nat64) -> (nat64);
 
     "sbtc_balance_of": (ssi: bitcoin_address, nonce: nat64) -> (nat64);
     
-    "get_inscription": (txid: text, cycles_cost: nat64, provider: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
-    
-    "withdraw_susd": (args: GetBoxAddressArgs, txid: text, cycles_cost: nat64, provider: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
-    
-    "get_susd": (args: GetBoxAddressArgs, txid: text) -> (variant { Ok: text; Err: UpdateBalanceError });
+    "redeem_btc": (args: GetBoxAddressArgs, txid: text) -> (variant { Ok: text; Err: UpdateBalanceError });
 
-    "update_ssi": (GetBoxAddressArgs) -> (text);
-    
-    "get_subaccount": (nonce: nat64, ssi: bitcoin_address) -> (blob) query;
-
-    "get_minter_info": () -> (MinterInfo) query;
-
-    "test": () -> (vec text);
-
-    "addServiceProvider": (RegisterProviderArgs) -> (nat64);
-
-    "getServiceProviderMap": () -> (vec record { ServiceProvider; nat64 }) query;
-
-    "get_indexed_balance": (id: text) -> (variant { Ok: text; Err: UpdateBalanceError });
-    
-    "redeem_btc": (args: GetBoxAddressArgs) -> (variant { Ok: text; Err: UpdateBalanceError });
+    "redemption_gas": (args: GetBoxAddressArgs) -> (variant { Ok: nat64; Err: UpdateBalanceError });
 
     "get_account": (ssi: bitcoin_address, dummy: bool) -> (variant { Ok: CollateralizedAccount; Err: UpdateBalanceError });
 

@@ -210,7 +210,8 @@ pub fn canonicalize_json(text: &[u8]) -> Option<Vec<u8>> {
 }
 
 pub async fn get_syron_balance(sdb: String) -> Option<u64> {
-    let outcall = match call_indexer_balance(sdb.clone(), 1, 72_000_000).await {
+    // @mainnet
+    let outcall = match call_indexer_balance(sdb.clone(), 0, 72_000_000).await {
         Ok(result) => result,
         Err(_err) => {
             return None;
@@ -225,8 +226,8 @@ pub async fn get_syron_balance(sdb: String) -> Option<u64> {
         .filter_map(|token| {
             let ticker = token.pointer("/ticker").and_then(Value::as_str);
             let balance = token.pointer("/overallBalance").and_then(Value::as_str);
-            match (ticker, balance) {
-                (Some("SYRO"), Some(balance)) => Some(balance.to_string()),
+            match (ticker, balance) { //@mainnet
+                (Some("SYRON"), Some(balance)) => Some(balance.to_string()),
                 _ => None,
             }
         })

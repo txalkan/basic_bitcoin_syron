@@ -164,6 +164,7 @@ dependencies = [
  "icrc-ledger-types",
  "mockall",
  "num-traits",
+ "regex",
  "ripemd",
  "serde",
  "serde_bytes",
@@ -675,7 +676,7 @@ checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 [[package]]
 name = "fe-derive"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "hex",
  "num-bigint-dig",
@@ -836,7 +837,7 @@ dependencies = [
 [[package]]
 name = "ic-base-types"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "byte-unit",
  "bytes",
@@ -862,7 +863,7 @@ dependencies = [
 [[package]]
 name = "ic-btc-types-internal"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "candid",
  "ic-btc-interface",
@@ -875,7 +876,7 @@ dependencies = [
 [[package]]
 name = "ic-canister-log"
 version = "0.2.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "serde",
 ]
@@ -883,7 +884,7 @@ dependencies = [
 [[package]]
 name = "ic-canisters-http-types"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "candid",
  "serde",
@@ -961,7 +962,7 @@ dependencies = [
 [[package]]
 name = "ic-ckbtc-kyt"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "askama",
  "candid",
@@ -981,7 +982,7 @@ dependencies = [
 [[package]]
 name = "ic-ckbtc-minter-tyron"
 version = "0.1.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "async-trait",
  "bech32 0.9.1",
@@ -1023,12 +1024,12 @@ dependencies = [
 [[package]]
 name = "ic-constants"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 
 [[package]]
 name = "ic-crypto-extended-bip32"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "ic-crypto-internal-threshold-sig-ecdsa",
 ]
@@ -1036,7 +1037,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-getrandom-for-wasm"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "getrandom",
 ]
@@ -1044,7 +1045,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-hmac"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "ic-crypto-internal-sha2",
 ]
@@ -1052,7 +1053,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-seed"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "hex",
  "ic-crypto-sha2",
@@ -1065,7 +1066,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-sha2"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "sha2",
 ]
@@ -1073,7 +1074,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-threshold-sig-ecdsa"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "curve25519-dalek",
  "fe-derive",
@@ -1103,7 +1104,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-internal-types"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "arrayvec 0.7.4",
  "hex",
@@ -1120,7 +1121,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-secrets-containers"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "serde",
  "zeroize",
@@ -1129,7 +1130,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-sha2"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "ic-crypto-internal-sha2",
 ]
@@ -1137,7 +1138,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-tree-hash"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "assert_matches",
  "ic-crypto-internal-types",
@@ -1151,7 +1152,7 @@ dependencies = [
 [[package]]
 name = "ic-error-types"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "ic-protobuf",
  "ic-utils",
@@ -1163,7 +1164,7 @@ dependencies = [
 [[package]]
 name = "ic-icrc1"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "candid",
  "ciborium",
@@ -1185,7 +1186,7 @@ dependencies = [
 [[package]]
 name = "ic-ledger-canister-core"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "async-trait",
  "candid",
@@ -1203,7 +1204,7 @@ dependencies = [
 [[package]]
 name = "ic-ledger-core"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "candid",
  "ic-ledger-hash-of",
@@ -1215,7 +1216,7 @@ dependencies = [
 [[package]]
 name = "ic-ledger-hash-of"
 version = "0.1.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "candid",
  "hex",
@@ -1225,7 +1226,7 @@ dependencies = [
 [[package]]
 name = "ic-management-canister-types"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "candid",
  "ic-base-types",
@@ -1250,7 +1251,7 @@ checksum = "8b5c7628eac357aecda461130f8074468be5aa4d258a002032d82d817f79f1f8"
 [[package]]
 name = "ic-protobuf"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "bincode",
  "candid",
@@ -1280,7 +1281,7 @@ dependencies = [
 [[package]]
 name = "ic-types"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "base64",
  "bincode",
@@ -1316,7 +1317,7 @@ dependencies = [
 [[package]]
 name = "ic-utils"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "hex",
  "prost",
@@ -1327,7 +1328,7 @@ dependencies = [
 [[package]]
 name = "ic-utils-ensure"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 
 [[package]]
 name = "ic-xrc-types"
@@ -1367,7 +1368,7 @@ dependencies = [
 [[package]]
 name = "icrc-ledger-client"
 version = "0.1.2"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "async-trait",
  "candid",
@@ -1378,7 +1379,7 @@ dependencies = [
 [[package]]
 name = "icrc-ledger-client-cdk"
 version = "0.1.2"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "async-trait",
  "candid",
@@ -1389,7 +1390,7 @@ dependencies = [
 [[package]]
 name = "icrc-ledger-types"
 version = "0.1.5"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "base32",
  "candid",
@@ -1697,7 +1698,7 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 [[package]]
 name = "phantom_newtype"
 version = "0.9.0"
-source = "git+https://github.com/txalkan/ic?rev=24cc0ef2a4f568fce7966df0a418adc64b3fb1ca#24cc0ef2a4f568fce7966df0a418adc64b3fb1ca"
+source = "git+https://github.com/txalkan/ic?rev=5c598d4a9f44a2f92dc877b647443e2c1b483b12#5c598d4a9f44a2f92dc877b647443e2c1b483b12"
 dependencies = [
  "candid",
  "serde",

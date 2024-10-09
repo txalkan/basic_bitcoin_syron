@@ -26,7 +26,7 @@ pub const CONTENT_TYPE_VALUE: &str = "application/json";
 
 // @dev Providers
 
-pub const TYRON_MAINNET_HOSTNAME: &str = "bitcoin.tyron.io/";
+pub const TYRON_MAINNET_HOSTNAME: &str = "btc.tyrondao.org/";
 
 pub const TYRON_TESTNET_HOSTNAME: &str = "testnet.tyron.io/";
 
