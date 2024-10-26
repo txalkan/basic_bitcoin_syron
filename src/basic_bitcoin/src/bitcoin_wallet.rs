@@ -107,9 +107,9 @@ pub async fn syron_p2wpkh(
         .utxos;
 
     // let own_utxos: Vec<ic_btc_interface::Utxo> =
-        // get_utxos(network, &own_address, 1, CallSource::Client) // @review (mainnet) min confirmations
-        // .await
-        // .unwrap().utxos;
+    // get_utxos(network, &own_address, 1, CallSource::Client) // @review (mainnet) min confirmations
+    // .await
+    // .unwrap().utxos;
 
     // for utxo in &own_utxos {
     //     log!(
@@ -129,7 +129,8 @@ pub async fn syron_p2wpkh(
         let txid_bytes = utxo.outpoint.txid.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
         let txid_hex = hex::encode(txid_bytes);
 
-        if txid_hex == "3775f3521bed25b9bd6f091b55152d3c3d508643191f44457f6fdc3e4c203ef4".to_string() || utxo.value < 600 {
+        // @review (upgrade)
+        if txid_hex == "1cd2d3ef9657b6c2894d45e8769d76d63a7c6a66247aacf8c4b6d6d8fb614970".to_string() || utxo.value < 600 {
             fee_utxos.remove(index);
         }
     }
@@ -162,7 +163,7 @@ pub async fn syron_p2wpkh(
         }
     }
 
-    let select_utxo = option_utxo.expect("No matching UTXO found!");
+    let select_utxo = option_utxo.expect("No matching UTXO found in the SYRON minter.");
 
     let syron_btc_address = BitcoinAddress::parse(&origin_address, network).unwrap();
     let dst_address = BitcoinAddress::parse(&dst_address, network).unwrap();
@@ -273,9 +274,9 @@ pub async fn burn_p2wpkh(
     let select_utxo = select_utxo.expect("No matching UTXO found!");
 
     // let utxos: Vec<ic_btc_interface::Utxo> =
-        // get_utxos(network, &own_address, 1, CallSource::Client) // @review (mainnet) min confirmations
-        // .await
-        // .unwrap().utxos;
+    // get_utxos(network, &own_address, 1, CallSource::Client) // @review (mainnet) min confirmations
+    // .await
+    // .unwrap().utxos;
 
     // for utxo in &own_utxos {
     //     log!(
