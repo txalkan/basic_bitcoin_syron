@@ -35,6 +35,10 @@ reinstall:
 # max_time_in_queue_nanos = 600_000_000_000 is 10 minutes (600 billion nanoseconds)
 # dfx canister --network="$(NET)" install --all --mode=upgrade basic_bitcoin_tyron
 
+.PHONY: syron
+syron:
+	dfx canister create basic_bitcoin_syron --ic --specified-id ehubr-iyaaa-aaaap-ab3sq-cai --subnet 3hhby-wmtmw-umt4t-7ieyg-bbiig-xiylg-sblrt-voxgt-bqckd-a75bf-rqe
+
 .PHONY: subaccounts
 .SILENT: subaccounts
 subaccounts:
@@ -93,8 +97,8 @@ reinstall_ledgers:
 	&& dfx canister --ic install --mode=reinstall \
 	icrc1_ledger_syron_susd --argument '(variant { Init = record { token_symbol = "SUSD"; token_name = "SUSD Syron Ledger"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'
 
-.PHONY: syron
-syron:
+.PHONY: minter
+minter:
 	dfx deploy --network="$(NET)" basic_bitcoin_tyron --argument '(variant { regtest }, variant { Init = record { mode = variant { GeneralAvailability }; btc_network = variant { Regtest }; ledger_id = principal "$(BTC_LEDGER)"; susd_id = principal "$(SUSD_LEDGER)"; xrc_id = principal "uf6dk-hyaaa-aaaaq-qaaaq-cai"; ecdsa_key_name = "$(ECDSA_KEY)"; min_confirmations = opt 1; retrieve_btc_min_amount = 600; max_time_in_queue_nanos = 600_000_000_000 } })'
 
 .PHONY: sdb
@@ -255,3 +259,8 @@ delete:
 .PHONY: balance
 balance:
 	dfx wallet --ic balance
+
+.PHONY: controller
+controller:
+	@read -p "Enter canister name: " name; \
+	dfx canister update-settings $$name --ic --add-controller u2ahl-r6ksj-xte6m-t4rac-uwxqw-prdqv-vbudo-4hapm-elpar-adken-cae
