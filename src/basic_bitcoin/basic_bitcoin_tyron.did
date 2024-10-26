@@ -215,6 +215,8 @@ type CollateralizedAccount = record {
     collateral_ratio: nat64;
     btc_1: nat64;
     susd_1: nat64;
+    susd_2: nat64;
+    susd_3: nat64;
 };
 
 service : (network, MinterArg) -> {
@@ -233,6 +235,10 @@ service : (network, MinterArg) -> {
     // to get SU$D using the [update_balance] endpoint.
     "get_box_address": (GetBoxAddressArgs) -> (bitcoin_address);
 
+    // Updates the Syron ledgers
+    // A BTC deposit was made to the address returned by the [get_box_address] endpoint.
+    "update_ssi_balance": (GetBoxAddressArgs) -> (variant { Ok: vec UtxoStatus; Err: UpdateBalanceError });
+
     "get_inscription": (txid: text, cycles_cost: nat64, provider: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
     
     "get_indexed_balance": (id: text) -> (variant { Ok: text; Err: UpdateBalanceError });
@@ -244,6 +250,8 @@ service : (network, MinterArg) -> {
     // * A BTC deposit was made to the address returned by the
     //   [get_box_address] endpoint.
     "withdraw_susd": (args: GetBoxAddressArgs, txid: text, cycles_cost: nat64, provider: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
+    
+    "syron_withdrawal": (args: GetBoxAddressArgs, txid: text, cycles_cost: nat64, provider: nat64, amount: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
     
     "get_subaccount": (nonce: nat64, ssi: bitcoin_address) -> (blob) query;
 
