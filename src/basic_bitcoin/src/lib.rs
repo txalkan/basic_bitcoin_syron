@@ -50,9 +50,8 @@ use icrc_ledger_types::icrc1::account::Subaccount;
 use candid::candid_method;
 
 struct TransferResult {
-    txid: String,
-    syron: u64,
-    limit: u64,
+    tx_id: String,
+    inscribed_amt: u64
 }
 
 async fn syron_transfer(
@@ -78,7 +77,7 @@ async fn syron_transfer(
 
     if receiver_address != origin_address {
         return Err(UpdateBalanceError::GenericError{
-            error_code: 302,
+            error_code: 303,
             error_message: format!("The inscription receiver address ({}) must be equal to the origin of the transfer ({})", receiver_address, origin_address),
         });
     }
@@ -93,18 +92,17 @@ async fn syron_transfer(
     let syron_f64: f64 = syron_inscription.parse().unwrap_or(0.0);
     let syron_u64: u64 = (syron_f64 * 100_000_000 as f64) as u64;
 
-    // Set a limit so that users cannot withdraw more than 2 cents above the amount, being 1 cent = 1_000_000
-    let limit = amount + 2_000_000;
+    // Set a limit so that users cannot withdraw more than 1 cent above the requested amount, being 1 cent = 1_000_000
+    let limit = amount + 1_000_000;
 
     if syron_u64 > limit {
         return Err(UpdateBalanceError::GenericError{
-            error_code: 303,
-            error_message: "Insufficient SUSD balance to withdraw the inscribed amount of stablecoin".to_string(),
-
+            error_code: 304,
+            error_message: format!("The inscribed amount ({}) cannot exceed the withdrawal amount you requested ({}).", syron_f64, amount/100_000_000),
         });
     }
 
-    // @dev Send SUSD to the destination address
+    // @dev Send SYRON to the destination address
 
     let btc_network = NETWORK.with(|n| n.get());
 
@@ -122,35 +120,50 @@ async fn syron_transfer(
     let txid_hex = hex::encode(txid_bytes);
 
     Ok(TransferResult{
-        txid: txid_hex,
-        syron: syron_u64,
-        limit
+        tx_id: txid_hex,
+        inscribed_amt: syron_u64
     })
 }
 
 /// Mint SUSD using P2WPKH - the transaction id must correspond to the required transfer inscription
-pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64) -> Result<String, UpdateBalanceError> {
-    // @dev Read SUSD available balance (nonce #2)
+pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64, amount: u64) -> Result<String, UpdateBalanceError> {
+    
+    // @dev Read SYRON available balance (nonce #2)
     let balance = balance_of(SyronLedger::SUSD, &ssi, 2).await.unwrap();
-
+    
+    // amount cannot be higher than the balance
+    if amount > balance {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 301,
+            error_message: "Insufficient balance".to_string(),
+        });
+    }
+    
+    // amount cannot be lower than 20 cents
+    if amount < 20_000_000 {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 301,
+            error_message: "Amount is below the minimum".to_string(),
+        });
+    }
+    
     let key_name = KEY_NAME.with(|kn| kn.borrow().to_string());
 
     // if empty, throw error
     if key_name.is_empty() {
         return Err(UpdateBalanceError::GenericError{
-            error_code: 301,
+            error_code: 302,
             error_message: "Key name is empty".to_string(),
         });
     }
     
     // @dev Get Syron Bitcoin address (The receiver of this transfer inscription must be equal to the Syron address)
-    // @review (cost)
-    let syron_derivation_path = DERIVATION_PATH.with(|d| d.clone());
+    let minter_derivation_path = DERIVATION_PATH.with(|d| d.clone());
     
-    let own_public_key =
-        ecdsa_api::ecdsa_public_key(key_name.clone(), syron_derivation_path.clone()).await;
+    let minter_public_key =
+        ecdsa_api::ecdsa_public_key(key_name.clone(), minter_derivation_path.clone()).await;
     
-    let syron_address = public_key_to_p2wpkh(&own_public_key);
+    let syron_address = public_key_to_p2wpkh(&minter_public_key);
 
     // @dev Send SUSD to the user's wallet (SSI)
     let transfer = syron_transfer(
@@ -158,25 +171,32 @@ pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64) -
         provider,
         cycles_cost,
         key_name,
-        syron_derivation_path,
+        minter_derivation_path,
         syron_address,
         &ssi,
-        balance
-    ).await?;
+        amount
+    ).await;
 
-    // Update Syron SUSD Ledger
-    // @dev Compute the new balance amount as the limit less the syron inscription
-    let new_balance = transfer.limit - transfer.syron;
+    match transfer {
+        Ok(transfer) => {
+            // Update Syron USD Ledger
+            // @dev Compute the new balance amount as the limit less the syron inscription
+            let new_balance = balance - transfer.inscribed_amt;
 
-    // do not consider new balance below 0.003 SUSD
-    if new_balance < 3_000_000 {
-        // withdraw full balance
-        syron_update(&ssi, 2, 3, balance).await.unwrap(); // @doc 2 is the nonce of the balance subaccount, and 3 the BRC-20 subaccount.
-    } else {
-        syron_update(&ssi, 2, 3, transfer.syron).await.unwrap();
+            // do not consider any new balance below 3 cents
+            if new_balance < 3_000_000 {
+                // withdraw full balance
+                syron_update(&ssi, 2, 3, balance).await.unwrap(); // @doc 2 is the nonce of the balance subaccount, and 3 the BRC-20 subaccount.
+            } else {
+                syron_update(&ssi, 2, 3, transfer.inscribed_amt).await.unwrap();
+            }
+
+            return Ok(transfer.tx_id);
+        }
+        Err(err) => {
+            return Err(err);
+        }
     }
-
-    Ok(transfer.txid)
 }
 
 fn check_postcondition<T>(t: T) -> T {
@@ -356,6 +376,12 @@ async fn get_box_address(args: GetBoxAddressArgs) -> String {
 }
 
 #[update]
+async fn update_ssi_balance(args: GetBoxAddressArgs) -> Result<Vec<UtxoStatus>, UpdateBalanceError> {
+    // check_anonymous_caller();
+    check_postcondition(updates::update_balance::update_ssi_balance(args).await)
+}
+
+#[update]
 pub async fn withdraw_susd(args: GetBoxAddressArgs, txid: String, cycles_cost: u64, provider: u64) -> Result<String, UpdateBalanceError> {
     // @review (mainnet) automate provider config per network
     
@@ -367,10 +393,26 @@ pub async fn withdraw_susd(args: GetBoxAddressArgs, txid: String, cycles_cost: u
         });
     }
 
-    // @dev 1. Update Balance (the user's SDB MUST have BTC deposit confirmed)
-    updates::update_balance::update_ssi_balance(args.clone()).await?;
+    // @dev Update Balance (the user's SDB MUST have BTC deposit confirmed)
+    let _ = updates::update_balance::update_ssi_balance(args.clone()).await; //?;  @review (error) only propagate error if != NoNewUtxos
 
-    mint(args.ssi, txid, cycles_cost as u128, provider).await
+    // @dev Read SYRON available balance (nonce #2)
+    let balance = balance_of(SyronLedger::SUSD, &args.ssi, 2).await.unwrap();
+
+    mint(args.ssi, txid, cycles_cost as u128, provider, balance).await
+}
+
+#[update]
+pub async fn syron_withdrawal(args: GetBoxAddressArgs, txid: String, cycles_cost: u64, provider: u64, amount: u64) -> Result<String, UpdateBalanceError> {
+    // @dev Verify args.op = GetSyron or throw erorr
+    if args.op != SyronOperation::GetSyron {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 300,
+            error_message: "Invalid operation".to_string(),
+        });
+    }
+
+    mint(args.ssi, txid, cycles_cost as u128, provider, amount).await
 }
 
 #[update]
@@ -501,7 +543,7 @@ async fn redeem_btc(args: GetBoxAddressArgs, txid: String) -> Result<String, Upd
         txid
     ).await?;
 
-    // 8. Update Syron ledgers of debtor
+    // 8. Update Syron ledgers of debtor @review (error)
     updates::update_balance::update_ssi_balance(args).await?;
 
     let txid_bytes = tx_id.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
@@ -513,7 +555,7 @@ async fn redemption_gas(args: GetBoxAddressArgs) -> Result<u64, UpdateBalanceErr
     // @dev Verify args.op = RedeemBitcoin or throw erorr
     if args.op != SyronOperation::RedeemBitcoin {
         return Err(UpdateBalanceError::GenericError{
-            error_code: 400,
+            error_code: 500,
             error_message: "Invalid operation".to_string(),
         });
     }
@@ -528,7 +570,7 @@ async fn redemption_gas(args: GetBoxAddressArgs) -> Result<u64, UpdateBalanceErr
     // if empty, throw error
     if key_name.is_empty() {
         return Err(UpdateBalanceError::GenericError{
-            error_code: 301,
+            error_code: 501,
             error_message: "Key name is empty".to_string(),
         });
     }
@@ -632,7 +674,7 @@ async fn liquidate(args: GetBoxAddressArgs, id: String, txid: String) -> Result<
         sdb_liquidator,
         &dst_address,
         susd_1).await?;
-    res.push(payment.txid);
+    res.push(payment.tx_id);
     
     let network = NETWORK.with(|n| n.get());
     
