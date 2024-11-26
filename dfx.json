@@ -2,16 +2,6 @@
   "version": 1,
   "dfx": "0.22.0",
   "canisters": {
-    "icrc1_ledger_syron_btc": {
-      "type": "custom",
-      "candid": "src/ledger/icrc1_ledger.did",
-      "wasm": "src/ledger/ic-icrc1-ledger.wasm.gz"
-    },
-    "icrc1_ledger_syron_susd": {
-      "type": "custom",
-      "candid": "src/ledger/icrc1_ledger.did",
-      "wasm": "src/ledger/ic-icrc1-ledger.wasm.gz"
-    },
     "basic_bitcoin_tyron": {
       "type": "custom",
       "package": "basic_bitcoin_tyron",
@@ -23,6 +13,38 @@
           "name": "candid:service"
         }
       ]
+    },
+    "icrc1_ledger_syron_btc": {
+      "type": "custom",
+      "candid": "src/ledger/icrc1_ledger.did",
+      "wasm": "src/ledger/ic-icrc1-ledger.wasm.gz"
+    },
+    "icrc1_ledger_syron_susd": {
+      "type": "custom",
+      "candid": "src/ledger/icrc1_ledger.did",
+      "wasm": "src/ledger/ic-icrc1-ledger.wasm.gz"
+    },
+    "basic_bitcoin_tyron2": {
+      "type": "custom",
+      "package": "basic_bitcoin_tyron",
+      "candid": "src/basic_bitcoin/basic_bitcoin_tyron.did",
+      "wasm": "target/wasm32-unknown-unknown/release/basic_bitcoin_tyron.wasm",
+      "build": "src/basic_bitcoin/build.sh",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
+    },
+    "icrc1_ledger_syron_btc2": {
+      "type": "custom",
+      "candid": "src/ledger/icrc1_ledger.did",
+      "wasm": "src/ledger/ic-icrc1-ledger.wasm.gz"
+    },
+    "icrc1_ledger_syron_usd2": {
+      "type": "custom",
+      "candid": "src/ledger/icrc1_ledger.did",
+      "wasm": "src/ledger/ic-icrc1-ledger.wasm.gz"
     }
   },
   "defaults": {

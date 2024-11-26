@@ -11,8 +11,9 @@
 # all: clear_ledgers clear clean re_ledgers reinstall
 
 .PHONY: all
+#all: clean re_ledgers2 reinstall2
 #all: clean reinstall
-all: clean re_ledgers reinstall
+all: clean reinstall2
 
 .PHONY: clean
 clean:
@@ -24,9 +25,16 @@ clean:
 .PHONY: re_ledgers
 re_ledgers:
 	dfx canister --ic install --mode=reinstall \
-	icrc1_ledger_syron_btc --argument '(variant { Init = record { token_symbol = "BTC"; token_name = "BTC Syron Ledger"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'\
+	icrc1_ledger_syron_btc --argument '(variant { Init = record { token_symbol = "SBTC"; token_name = "Syron Ledger for BTC"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'\
 	&& dfx canister --ic install --mode=reinstall \
-	icrc1_ledger_syron_susd --argument '(variant { Init = record { token_symbol = "SUSD"; token_name = "SUSD Syron Ledger"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'
+	icrc1_ledger_syron_susd --argument '(variant { Init = record { token_symbol = "SUSD"; token_name = "Syron Ledger for USD"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'
+
+.PHONY: re_ledgers2
+re_ledgers2:
+	dfx canister --ic install --mode=reinstall \
+	icrc1_ledger_syron_btc2 --argument '(variant { Init = record { token_symbol = "SBTC"; token_name = "Syron Ledger for BTC"; decimals = opt 8; minting_account = record { owner = principal "qgzyj-ciaaa-aaaam-qb5sq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qgzyj-ciaaa-aaaam-qb5sq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'\
+	&& dfx canister --ic install --mode=reinstall \
+	icrc1_ledger_syron_usd2 --argument '(variant { Init = record { token_symbol = "SUSD"; token_name = "Syron Ledger for USD"; decimals = opt 8; minting_account = record { owner = principal "qgzyj-ciaaa-aaaam-qb5sq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qgzyj-ciaaa-aaaam-qb5sq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'
 
 .PHONY: reinstall
 #.SILENT: reinstall
@@ -34,6 +42,10 @@ reinstall:
 	dfx canister --ic install --mode=reinstall basic_bitcoin_tyron --argument '(variant { mainnet }, variant { Init = record { mode = variant { GeneralAvailability }; btc_network = variant { Mainnet }; ledger_id = principal "ql2yb-haaaa-aaaam-qbfla-cai"; susd_id = principal "qm36v-kyaaa-aaaam-qbflq-cai"; xrc_id = principal "uf6dk-hyaaa-aaaaq-qaaaq-cai"; ecdsa_key_name = "key_1"; min_confirmations = opt 1; retrieve_btc_min_amount = 200; max_time_in_queue_nanos = 600_000_000_000 } })'
 # max_time_in_queue_nanos = 600_000_000_000 is 10 minutes (600 billion nanoseconds)
 # dfx canister --network="$(NET)" install --all --mode=upgrade basic_bitcoin_tyron
+
+.PHONY: reinstall2
+reinstall2:
+	dfx canister --ic install --mode=reinstall basic_bitcoin_tyron2 --argument '(variant { mainnet }, variant { Init = record { mode = variant { GeneralAvailability }; btc_network = variant { Mainnet }; ledger_id = principal "qp2tv-uaaaa-aaaam-qb5ta-cai"; susd_id = principal "qi3vb-zyaaa-aaaam-qb5tq-cai"; xrc_id = principal "uf6dk-hyaaa-aaaaq-qaaaq-cai"; ecdsa_key_name = "key_1"; min_confirmations = opt 1; retrieve_btc_min_amount = 200; max_time_in_queue_nanos = 600_000_000_000 } })'
 
 .PHONY: syron
 syron:
@@ -86,16 +98,8 @@ local:
 # dfx canister create basic_bitcoin_tyron
 .PHONY: ledgers
 ledgers:
-	dfx deploy --network="$(NET)" icrc1_ledger_syron_btc --argument '(variant { Init = record { token_symbol = "BTC"; token_name = "BTC Syron Ledger"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'\
-	&& dfx deploy --network="$(NET)" icrc1_ledger_syron_susd --argument '(variant { Init = record { token_symbol = "SUSD"; token_name = "SUSD Syron Ledger"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'
-
-.PHONY: reinstall_ledgers
-.SILENT: reinstall_ledgers
-reinstall_ledgers:
-	dfx canister --ic install --mode=reinstall \
-	icrc1_ledger_syron_btc --argument '(variant { Init = record { token_symbol = "BTC"; token_name = "BTC Syron Ledger"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'\
-	&& dfx canister --ic install --mode=reinstall \
-	icrc1_ledger_syron_susd --argument '(variant { Init = record { token_symbol = "SUSD"; token_name = "SUSD Syron Ledger"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'
+	dfx deploy --network="$(NET)" icrc1_ledger_syron_btc --argument '(variant { Init = record { token_symbol = "BTC"; token_name = "Syron Ledger for BTC"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'\
+	&& dfx deploy --network="$(NET)" icrc1_ledger_syron_susd --argument '(variant { Init = record { token_symbol = "SUSD"; token_name = "Syron Ledger for USD"; decimals = opt 8; minting_account = record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai" }; transfer_fee = 0; metadata = vec {}; feature_flags = opt record { icrc2 = true }; initial_balances = vec { record { record { owner = principal "qczt5-riaaa-aaaam-qbfkq-cai"; }; 0; }; }; archive_options = record { num_blocks_to_archive = 1000; trigger_threshold = 2000; controller_id = principal "$(PRINCIPAL)"; cycles_for_archive_creation = opt 10000000000000 }}})'
 
 .PHONY: minter
 minter:
@@ -157,11 +161,6 @@ info:
 .PHONY: p2wpkh
 p2wpkh:
 	dfx canister --network="$(NET)" call basic_bitcoin_tyron get_p2wpkh_address
-
-.PHONY: topup
-.SILENT: topup
-topup:
-	dfx canister deposit-cycles --ic 3_000_000_000_000 qczt5-riaaa-aaaam-qbfkq-cai
 
 .PHONY: logs
 logs:
@@ -264,3 +263,8 @@ balance:
 controller:
 	@read -p "Enter canister name: " name; \
 	dfx canister update-settings $$name --ic --add-controller u2ahl-r6ksj-xte6m-t4rac-uwxqw-prdqv-vbudo-4hapm-elpar-adken-cae
+
+.PHONY: topup
+topup:
+	@read -p "Enter canister name: " name; \
+	dfx canister deposit-cycles --ic 1_000_000_000_000 $$name
