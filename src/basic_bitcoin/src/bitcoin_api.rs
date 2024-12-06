@@ -4,6 +4,7 @@ use ic_cdk::api::management_canister::bitcoin::{
     BitcoinNetwork, GetBalanceRequest, GetCurrentFeePercentilesRequest, GetUtxosRequest,
     GetUtxosResponse, MillisatoshiPerByte, Satoshi, SendTransactionRequest,
 };
+use ic_ckbtc_minter_tyron::updates::update_balance::UpdateBalanceError;
 
 // The fees for the various bitcoin endpoints.
 const GET_BALANCE_COST_CYCLES: u64 = 100_000_000;
@@ -75,7 +76,7 @@ pub async fn get_current_fee_percentiles(network: BitcoinNetwork) -> Vec<Millisa
 ///
 /// Relies on the `bitcoin_send_transaction` endpoint.
 /// See https://internetcomputer.org/docs/current/references/ic-interface-spec/#ic-bitcoin_send_transaction
-pub async fn send_transaction(network: BitcoinNetwork, transaction: Vec<u8>) {
+pub async fn send_transaction(network: BitcoinNetwork, transaction: Vec<u8>) -> Result<(), UpdateBalanceError> {
     let transaction_fee = SEND_TRANSACTION_BASE_CYCLES
         + (transaction.len() as u64) * SEND_TRANSACTION_PER_BYTE_CYCLES;
 
@@ -89,6 +90,12 @@ pub async fn send_transaction(network: BitcoinNetwork, transaction: Vec<u8>) {
         transaction_fee,
     )
     .await;
-
-    res.unwrap();
+    
+    match res {
+        Ok(()) => return Ok(()),
+        Err(_) => return Err(UpdateBalanceError::GenericError{
+            error_code: 499,
+            error_message: "bitcoin_send_transaction failed".to_string()
+        }),
+    }
 }

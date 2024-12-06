@@ -73,6 +73,9 @@ type InitArgs = record {
     // The principal of the Exchange Rate Canister that handles the oracle prices.
     xrc_id : principal;
 
+    // The principal of the Sign In With Bitcoin (SIWB) canister.
+    siwb_id : principal;
+
     // The name of the ECDSA key to use.
     // E.g., "dfx_test_key" on the local replica.
     ecdsa_key_name : text;
@@ -203,6 +206,7 @@ type syron_operation = variant {
     getsyron;
     redeembitcoin;
     liquidation;
+    payment;
 };
 
 type GetBoxAddressArgs = record {
@@ -249,9 +253,9 @@ service : (network, MinterArg) -> {
     //
     // * A BTC deposit was made to the address returned by the
     //   [get_box_address] endpoint.
-    "withdraw_susd": (args: GetBoxAddressArgs, txid: text, cycles_cost: nat64, provider: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
+    "withdraw_susd": (args: GetBoxAddressArgs, txid: text, cycles_cost: nat64, provider: nat64, fee: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
     
-    "syron_withdrawal": (args: GetBoxAddressArgs, txid: text, cycles_cost: nat64, provider: nat64, amount: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
+    "syron_withdrawal": (args: GetBoxAddressArgs, txid: text, cycles_cost: nat64, provider: nat64, amount: nat64, fee: nat64) -> (variant { Ok: text; Err: UpdateBalanceError });
     
     "get_subaccount": (nonce: nat64, ssi: bitcoin_address) -> (blob) query;
 
@@ -265,5 +269,7 @@ service : (network, MinterArg) -> {
 
     "get_account": (ssi: bitcoin_address, dummy: bool) -> (variant { Ok: CollateralizedAccount; Err: UpdateBalanceError });
 
-    "liquidate": (args: GetBoxAddressArgs, id: text, txid: text) -> (variant { Ok: vec text; Err: UpdateBalanceError });
+    "liquidate": (args: GetBoxAddressArgs, id: text, txid: text, fee: nat64) -> (variant { Ok: vec text; Err: UpdateBalanceError });
+
+    "send_syron": (args: GetBoxAddressArgs, recipient: bitcoin_address, amount: nat64) -> (variant { Ok: vec nat64; Err: UpdateBalanceError });
 }

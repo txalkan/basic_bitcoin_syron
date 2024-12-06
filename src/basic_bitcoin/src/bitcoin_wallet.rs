@@ -68,22 +68,9 @@ pub async fn syron_p2wpkh(
     origin_derivation_path: Vec<Vec<u8>>,
     origin_address: String,
     dst_address: &str,
-    txid: String,
-) -> Result<[u8;32], UpdateBalanceError> {
-    // Get fee percentiles from previous transactions to estimate our own fee.
-    let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
-
-    // @dev Gas in satoshis per byte @review (signet)
-    let fee_per_byte = if fee_percentiles.is_empty() {
-        // There are no fee percentiles. This case can only happen on a regtest
-        // network where there are no non-coinbase transactions. In this case,
-        // we use a default of 5000 millisatoshis/byte (i.e. 5 satoshi/byte)
-        5000
-    } else {
-        // Choose the 20th percentile for sending fees.
-        fee_percentiles[20]
-    };
-
+    tx_id: String,
+    fee_per_byte: u64    
+) -> Result<String, UpdateBalanceError> {
     // @dev Fetch sender's public key, address, and UTXOs.
     let own_public_key =
         ecdsa_api::ecdsa_public_key(key_name.clone(), origin_derivation_path.clone()).await;
@@ -151,13 +138,13 @@ pub async fn syron_p2wpkh(
         let txid_bytes = utxo.outpoint.txid.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
         let txid_hex = hex::encode(txid_bytes);
 
-        if txid_hex == txid {
+        if txid_hex == tx_id {
             // let ssi_utxo = Utxo {
             //     outpoint,
             //     value: utxo.value,
             //     height: utxo.height
             // };
-            option_utxo = Some(/*ssi_*/utxo.clone());
+            option_utxo = Some(utxo.clone());
             // fee_utxos.remove(index); @dev Removed already in previous iteration @protocol Inscription UTXO value must be less than 600 satoshis
             break
         }
@@ -182,18 +169,26 @@ pub async fn syron_p2wpkh(
     // Sign the transaction.
     let signed_transaction: SignedTransaction = sign_transaction_p2wpkh(
         &own_public_key,
-        transaction,
+        transaction.clone(),
         key_name,
         origin_derivation_path,
     )
     .await.map_err(|err| UpdateBalanceError::CallError{method: err.method().to_string(), reason: Reason::to_string(err.reason())})?;
 
     print("Sending transaction...");
-    let signed_transaction_bytes = signed_transaction.serialize();
-    bitcoin_api::send_transaction(btc_network, signed_transaction_bytes).await;
-    print("Done");
 
-    Ok(signed_transaction.wtxid())
+    let signed_transaction_bytes = signed_transaction.serialize();
+
+    let concatenated_string = format!(
+        "{}&&{}",
+        fee_per_byte,
+        transaction.txid().to_string(),
+   );
+    
+    match bitcoin_api::send_transaction(btc_network, signed_transaction_bytes.clone()).await {
+        Ok(()) => Ok(concatenated_string),
+        Err(err) => return Err(err)
+    }
 }
 
 pub async fn burn_p2wpkh(
@@ -215,10 +210,10 @@ pub async fn burn_p2wpkh(
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
         // we use a default of 5000 millisatoshis/byte (i.e. 5 satoshi/byte)
-        5000
+        10000
     } else {
-        // Choose the 20th percentile for sending fees.
-        fee_percentiles[20]
+        // Choose the 50th percentile for sending fees.
+        fee_percentiles[50]
     };
 
     // let (ecdsa_public_key) =
@@ -314,10 +309,9 @@ pub async fn burn_p2wpkh(
 
     print("Sending transaction...");
     let signed_transaction_bytes = signed_transaction.serialize();
-    bitcoin_api::send_transaction(btc_network, signed_transaction_bytes).await;
-    print("Done");
-
-    Ok(signed_transaction.wtxid())
+    match bitcoin_api::send_transaction(btc_network, signed_transaction_bytes).await {
+        Ok(()) => return Ok(signed_transaction.wtxid()),
+        Err(err) => return Err(err)}
 }
 
 pub async fn gas_p2wpkh(
@@ -336,10 +330,10 @@ pub async fn gas_p2wpkh(
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
         // we use a default of 5000 millisatoshis/byte (i.e. 5 satoshi/byte)
-        5000
+        10000
     } else {
-        // Choose the 20th percentile for sending fees.
-        fee_percentiles[20]
+        // Choose the 50th percentile for sending fees.
+        fee_percentiles[50]
     };
 
     let ecdsa_public_key = init_ecdsa_public_key().await;
@@ -414,10 +408,10 @@ pub async fn liquidate_p2wpkh(
         // There are no fee percentiles. This case can only happen on a regtest
         // network where there are no non-coinbase transactions. In this case,
         // we use a default of 5000 millisatoshis/byte (i.e. 5 satoshi/byte)
-        5000
+        10000
     } else {
-        // Choose the 20th percentile for sending fees.
-        fee_percentiles[20]
+        // Choose the 50th percentile for sending fees.
+        fee_percentiles[50]
     };
 
     let ecdsa_public_key = init_ecdsa_public_key().await;
@@ -782,7 +776,6 @@ fn build_unsigned_liquidation_with_fee(
     })
 }
 
-
 async fn build_unsigned_mint(
     own_public_key: &[u8],
     own_address: BitcoinAddress,
@@ -942,10 +935,10 @@ async fn sign_transaction_p2wpkh(
 
         let sec1_signature =
             sign_with_ecdsa(key_name_.clone(), DerivationPath::new(path.clone()), sighash)
-            .await;
+            .await?;
 
         signed_inputs.push(SignedInput {
-            signature: EncodedSignature::from_sec1(&sec1_signature.unwrap()),
+            signature: EncodedSignature::from_sec1(&sec1_signature),
             pubkey,
             previous_output: outpoint.clone(),
             sequence: input.sequence,
