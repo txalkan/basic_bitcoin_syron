@@ -14,6 +14,7 @@ pub use crate::http::*;
 
 use bitcoin::Network;
 use bitcoin::OutPoint;
+use candid::Principal;
 use ic_cdk::api::management_canister::http_request::HttpResponse;
 use ic_cdk::api::management_canister::http_request::TransformArgs;
 use ic_cdk::{api::management_canister::bitcoin::{
@@ -25,6 +26,7 @@ use ic_ckbtc_minter_tyron::address::public_key_to_p2wpkh;
 use ic_ckbtc_minter_tyron::lifecycle::init::BtcNetwork;
 use ic_ckbtc_minter_tyron::updates::retrieve_btc::balance_of;
 use ic_ckbtc_minter_tyron::updates::retrieve_btc::SyronLedger;
+use ic_ckbtc_minter_tyron::updates::update_balance::syron_payment;
 use ic_ckbtc_minter_tyron::updates::update_balance::syron_update;
 use ic_ckbtc_minter_tyron::updates::update_balance::CollateralizedAccount;
 use icrc_ledger_types::icrc1::account::Account;
@@ -62,7 +64,8 @@ async fn syron_transfer(
     origin_derivation_path: Vec<Vec<u8>>,
     origin_address: String,
     dst_address: &str,
-    amount: u64,
+    requested_amt: u64,
+    fee: u64
 ) -> Result<TransferResult, UpdateBalanceError> {
     // @dev Check BRC-20 transfer inscription.
     let outcall = call_indexer_inscription(provider, txid.clone(), cycles_cost).await?;
@@ -92,19 +95,33 @@ async fn syron_transfer(
     let syron_f64: f64 = syron_inscription.parse().unwrap_or(0.0);
     let syron_u64: u64 = (syron_f64 * 100_000_000 as f64) as u64;
 
-    // Set a limit so that users cannot withdraw more than 1 cent above the requested amount, being 1 cent = 1_000_000
-    let limit = amount + 1_000_000;
-
-    if syron_u64 > limit {
+    if syron_u64 > requested_amt {
         return Err(UpdateBalanceError::GenericError{
             error_code: 304,
-            error_message: format!("The inscribed amount ({}) cannot exceed the withdrawal amount you requested ({}).", syron_f64, amount/100_000_000),
+            error_message: format!("The inscribed amount ({}) cannot exceed the withdrawal amount you requested ({}).", syron_f64, requested_amt/100_000_000),
         });
     }
 
     // @dev Send SYRON to the destination address
 
     let btc_network = NETWORK.with(|n| n.get());
+
+    // Get fee percentiles from previous transactions to estimate our own fee.
+    let fee_percentiles = bitcoin_api::get_current_fee_percentiles(btc_network).await;
+
+    // @dev Gas in satoshis per byte 
+    let  fee_per_byte_ = if fee_percentiles.is_empty() {
+        // There are no fee percentiles. This case can only happen on a regtest
+        // network where there are no non-coinbase transactions. In this case,
+        // we use a default of 5000 millisatoshis/byte (i.e. 5 satoshi/byte)
+        5000
+    } else {
+        // Choose the 50th percentile for sending fees.
+        fee_percentiles[50]
+    };
+    
+    // @dev Calculate fee_per_byte as the higher value between fee and fee_per_byte_
+    let fee_per_byte = std::cmp::max(fee, fee_per_byte_);
 
     let tx_id = bitcoin_wallet::syron_p2wpkh(
         btc_network,
@@ -113,20 +130,18 @@ async fn syron_transfer(
         origin_address,
         &dst_address,
         txid,
+        fee_per_byte
     )
     .await?;
 
-    let txid_bytes = tx_id.iter().rev().map(|n| *n as u8).collect::<Vec<u8>>();
-    let txid_hex = hex::encode(txid_bytes);
-
     Ok(TransferResult{
-        tx_id: txid_hex,
+        tx_id,
         inscribed_amt: syron_u64
     })
 }
 
-/// Mint SUSD using P2WPKH - the transaction id must correspond to the required transfer inscription
-pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64, amount: u64) -> Result<String, UpdateBalanceError> {
+/// Mint SYRON USD using P2WPKH - the transaction id must correspond to the required transfer inscription
+pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64, amount: u64, fee: u64) -> Result<String, UpdateBalanceError> {
     
     // @dev Read SYRON available balance (nonce #2)
     let balance = balance_of(SyronLedger::SUSD, &ssi, 2).await.unwrap();
@@ -174,28 +189,43 @@ pub async fn mint(ssi: String, txid: String, cycles_cost: u128, provider: u64, a
         minter_derivation_path,
         syron_address,
         &ssi,
-        amount
+        amount,
+        fee
     ).await;
 
     match transfer {
         Ok(transfer) => {
             // Update Syron USD Ledger
-            // @dev Compute the new balance amount as the limit less the syron inscription
-            let new_balance = balance - transfer.inscribed_amt;
+            // @dev Compute the new balance amount as the current balance less the SYRON inscription
+            let new_balance = balance.checked_sub(transfer.inscribed_amt).unwrap_or(0);
 
-            // do not consider any new balance below 3 cents
-            if new_balance < 3_000_000 {
-                // withdraw full balance
-                syron_update(&ssi, 2, 3, balance).await.unwrap(); // @doc 2 is the nonce of the balance subaccount, and 3 the BRC-20 subaccount.
+            // do not consider any new balance below 2 cents @review amt
+            if new_balance < 2_000_000 {
+                // withdraw full balance @doc 2 is the nonce of the balance subaccount, and 3 the BRC-20 subaccount.
+                match syron_update(&ssi, 2, 3, balance).await {
+                    Ok(_) => {
+                        println!("Successful withdrawal of the full balance: {:?}", balance);
+                        return Ok(transfer.tx_id);
+                    }
+                    Err(err) => {
+                        println!("Double spending risk warning: {:?}", err);
+                        return Err(err) // @review save data in records to run book-keeping task by the system again
+                    }
+                }
             } else {
-                syron_update(&ssi, 2, 3, transfer.inscribed_amt).await.unwrap();
+                match syron_update(&ssi, 2, 3, transfer.inscribed_amt).await {
+                    Ok(_) => {
+                        println!("Successful withdrawal of the following balance: {:?}", transfer.inscribed_amt);
+                        return Ok(transfer.tx_id);
+                    }
+                    Err(err) => {
+                        println!("Double spending risk warning: {:?}", err);
+                        return Err(err) // @review save data in records to run book-keeping task by the system again
+                    }
+                }
             }
-
-            return Ok(transfer.tx_id);
         }
-        Err(err) => {
-            return Err(err);
-        }
+        Err(err) => return Err(err) 
     }
 }
 
@@ -382,7 +412,7 @@ async fn update_ssi_balance(args: GetBoxAddressArgs) -> Result<Vec<UtxoStatus>, 
 }
 
 #[update]
-pub async fn withdraw_susd(args: GetBoxAddressArgs, txid: String, cycles_cost: u64, provider: u64) -> Result<String, UpdateBalanceError> {
+pub async fn withdraw_susd(args: GetBoxAddressArgs, txid: String, cycles_cost: u64, provider: u64, fee: u64) -> Result<String, UpdateBalanceError> {
     // @review (mainnet) automate provider config per network
     
     // @dev Verify args.op = GetSyron or throw erorr
@@ -397,13 +427,13 @@ pub async fn withdraw_susd(args: GetBoxAddressArgs, txid: String, cycles_cost: u
     let _ = updates::update_balance::update_ssi_balance(args.clone()).await; //?;  @review (error) only propagate error if != NoNewUtxos
 
     // @dev Read SYRON available balance (nonce #2)
-    let balance = balance_of(SyronLedger::SUSD, &args.ssi, 2).await.unwrap();
+    let balance = balance_of(SyronLedger::SUSD, &args.ssi, 2).await.unwrap(); //@review the inscribed amt might be less than the balance
 
-    mint(args.ssi, txid, cycles_cost as u128, provider, balance).await
+    mint(args.ssi, txid, cycles_cost as u128, provider, balance, fee).await
 }
 
 #[update]
-pub async fn syron_withdrawal(args: GetBoxAddressArgs, txid: String, cycles_cost: u64, provider: u64, amount: u64) -> Result<String, UpdateBalanceError> {
+pub async fn syron_withdrawal(args: GetBoxAddressArgs, txid: String, cycles_cost: u64, provider: u64, amount: u64, fee: u64) -> Result<String, UpdateBalanceError> {
     // @dev Verify args.op = GetSyron or throw erorr
     if args.op != SyronOperation::GetSyron {
         return Err(UpdateBalanceError::GenericError{
@@ -412,7 +442,7 @@ pub async fn syron_withdrawal(args: GetBoxAddressArgs, txid: String, cycles_cost
         });
     }
 
-    mint(args.ssi, txid, cycles_cost as u128, provider, amount).await
+    mint(args.ssi, txid, cycles_cost as u128, provider, amount, fee).await
 }
 
 #[update]
@@ -603,7 +633,7 @@ async fn get_account(ssi: String, dummy: bool) -> Result<CollateralizedAccount, 
 
 #[update]
 // @review the order of UTXOs is important to transfer the proper inscription
-async fn liquidate(args: GetBoxAddressArgs, id: String, txid: String) -> Result<Vec<String>, UpdateBalanceError> {
+async fn liquidate(args: GetBoxAddressArgs, id: String, txid: String, fee: u64) -> Result<Vec<String>, UpdateBalanceError> {
     let ssi: &str = &args.ssi;
     
     // @dev 1. Verify collateral ratio is below 12,000 basis points or throw error
@@ -673,7 +703,10 @@ async fn liquidate(args: GetBoxAddressArgs, id: String, txid: String) -> Result<
         origin_derivation_path,
         sdb_liquidator,
         &dst_address,
-        susd_1).await?;
+        susd_1,
+        //@review update balance from syron deposits to make sure that the liquidator has enough to pay
+        fee
+    ).await?;
     res.push(payment.tx_id);
     
     let network = NETWORK.with(|n| n.get());
@@ -695,4 +728,41 @@ async fn liquidate(args: GetBoxAddressArgs, id: String, txid: String) -> Result<
     updates::update_balance::update_ssi_balance(args).await?;
 
     Ok(res)
+}
+
+fn check_anonymous_caller() {
+    if ic_cdk::caller() == Principal::anonymous() {
+        panic!("anonymous caller not allowed")
+    }
+}
+
+#[update]
+pub async fn send_syron(args: GetBoxAddressArgs, recipient: String, amount: u64) -> Result<Vec<u64>, UpdateBalanceError> {
+    check_anonymous_caller();
+
+    // @dev Verify args.op = Payment or throw erorr
+    if args.op != SyronOperation::Payment {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 600,
+            error_message: "Invalid operation".to_string(),
+        });
+    }
+
+    let ssi = args.ssi;
+
+    // @dev Read SYRON available balance (nonce #2)
+    let balance = balance_of(SyronLedger::SUSD, &ssi, 2).await.unwrap();
+
+    // amount cannot be higher than the balance
+    if amount > balance {
+        return Err(UpdateBalanceError::GenericError{
+            error_code: 601,
+            error_message: "Insufficient balance".to_string(),
+        });
+    }
+
+    match syron_payment(&ssi, &recipient, amount).await {
+        Ok(res) => Ok(res),
+        Err(err) => Err(err)
+    }
 }

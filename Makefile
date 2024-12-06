@@ -45,7 +45,7 @@ reinstall:
 
 .PHONY: reinstall2
 reinstall2:
-	dfx canister --ic install --mode=reinstall basic_bitcoin_tyron2 --argument '(variant { mainnet }, variant { Init = record { mode = variant { GeneralAvailability }; btc_network = variant { Mainnet }; ledger_id = principal "qp2tv-uaaaa-aaaam-qb5ta-cai"; susd_id = principal "qi3vb-zyaaa-aaaam-qb5tq-cai"; xrc_id = principal "uf6dk-hyaaa-aaaaq-qaaaq-cai"; ecdsa_key_name = "key_1"; min_confirmations = opt 1; retrieve_btc_min_amount = 200; max_time_in_queue_nanos = 600_000_000_000 } })'
+	dfx canister --ic install --mode=reinstall basic_bitcoin_tyron2 --argument '(variant { mainnet }, variant { Init = record { mode = variant { GeneralAvailability }; btc_network = variant { Mainnet }; ledger_id = principal "qp2tv-uaaaa-aaaam-qb5ta-cai"; susd_id = principal "qi3vb-zyaaa-aaaam-qb5tq-cai"; xrc_id = principal "uf6dk-hyaaa-aaaaq-qaaaq-cai"; siwb_id = principal "mwm4a-eiaaa-aaaah-aebnq-cai"; ecdsa_key_name = "key_1"; min_confirmations = opt 1; retrieve_btc_min_amount = 200; max_time_in_queue_nanos = 600_000_000_000 } })'
 
 .PHONY: syron
 syron:
