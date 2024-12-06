@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "dfx": "0.22.0",
+  "dfx": "0.24.3",
   "canisters": {
     "basic_bitcoin_tyron": {
       "type": "custom",
